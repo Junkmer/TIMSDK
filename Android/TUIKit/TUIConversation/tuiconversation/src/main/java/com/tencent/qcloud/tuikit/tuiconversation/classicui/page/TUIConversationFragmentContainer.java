@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
 
 public class TUIConversationFragmentContainer extends BaseFragment {
     private static final String TAG = TUIConversationFragmentContainer.class.getSimpleName();
@@ -186,9 +187,9 @@ public class TUIConversationFragmentContainer extends BaseFragment {
                 if (bean.getGroupType() == ConversationGroupBean.CONVERSATION_GROUP_TYPE_DEFAULT) {
                     return TUIConversationFragment.newInstance();
                 } else if (bean.getGroupType() == ConversationGroupBean.CONVERSATION_GROUP_TYPE_GROUP) {
-                    return newConversationGroupFragment(bean);
+                    return Objects.requireNonNull(newConversationGroupFragment(bean));
                 } else if (bean.getGroupType() == ConversationGroupBean.CONVERSATION_GROUP_TYPE_MARK) {
-                    return newConversationMarkFragment(bean);
+                    return Objects.requireNonNull(newConversationMarkFragment(bean));
                 } else {
                     return TUIConversationFragment.newInstance();
                 }
