@@ -14,11 +14,18 @@
 #import "TUIMessageDataProvider.h"
 #import "TUIVideoMessageCellData.h"
 #import "TUIChatConversationModel.h"
+#import <TIMCommon/TIMCommonMediator.h>
+#import <TIMCommon/TUIEmojiMeditorProtocol.h>
 
 #define Input_SendBtn_Key @"Input_SendBtn_Key"
 #define Input_SendBtn_Title @"Input_SendBtn_Title"
 #define Input_SendBtn_ImageName @"Input_SendBtn_ImageName"
-
+@interface TUISplitEmojiData : NSObject
+@property (nonatomic, assign) NSInteger start;
+@property (nonatomic, assign) NSInteger end;
+@end
+@implementation TUISplitEmojiData
+@end
 @interface TUIChatDataProvider ()
 @property(nonatomic, strong) TUIInputMoreCellData *welcomeInputMoreMenu;
 
@@ -54,7 +61,7 @@
           NSString *text = TIMCommonLocalizableString(TUIKitWelcome);
           NSString *link = TUITencentCloudHomePageEN;
           NSString *language = [TUIGlobalization tk_localizableLanguageKey];
-          if ([language containsString:@"zh-"]) {
+          if ([language tui_containsString:@"zh-"]) {
               link = TUITencentCloudHomePageCN;
           }
           NSError *error = nil;
@@ -82,48 +89,72 @@
 
 - (NSArray<TUIInputMoreCellData *> *)builtInInputMoreMenus {
     if (_builtInInputMoreMenus == nil) {
-        __weak typeof(self) weakSelf = self;
-        TUIInputMoreCellData *photoData = [[TUIInputMoreCellData alloc] init];
-        photoData.priority = 1000;
-        photoData.title = TIMCommonLocalizableString(TUIKitMorePhoto);
-        photoData.image = TUIChatBundleThemeImage(@"chat_more_picture_img", @"more_picture");
-        photoData.onClicked = ^(NSDictionary *actionParam) {
-          if ([weakSelf.delegate respondsToSelector:@selector(onSelectPhotoMoreCellData)]) {
-              [weakSelf.delegate onSelectPhotoMoreCellData];
-          }
-        };
+        return  [self configBuiltInInputMoreMenusWithConversationModel:nil];
+    }
+    return _builtInInputMoreMenus;
+}
+- (NSArray<TUIInputMoreCellData *> *)configBuiltInInputMoreMenusWithConversationModel:(TUIChatConversationModel *)conversationModel {
+    __weak typeof(self) weakSelf = self;
+    TUIInputMoreCellData *albumData = [[TUIInputMoreCellData alloc] init];
+    albumData.priority = 1000;
+    albumData.title = TIMCommonLocalizableString(TUIKitMorePhoto);
+    albumData.image = TUIChatBundleThemeImage(@"chat_more_picture_img", @"more_picture");
+    albumData.onClicked = ^(NSDictionary *actionParam) {
+      if ([weakSelf.delegate respondsToSelector:@selector(onSelectPhotoMoreCellData)]) {
+          [weakSelf.delegate onSelectPhotoMoreCellData];
+      }
+    };
 
-        TUIInputMoreCellData *pictureData = [[TUIInputMoreCellData alloc] init];
-        pictureData.priority = 900;
-        pictureData.title = TIMCommonLocalizableString(TUIKitMoreCamera);
-        pictureData.image = TUIChatBundleThemeImage(@"chat_more_camera_img", @"more_camera");
-        pictureData.onClicked = ^(NSDictionary *actionParam) {
-          if ([weakSelf.delegate respondsToSelector:@selector(onTakePictureMoreCellData)]) {
-              [weakSelf.delegate onTakePictureMoreCellData];
-          }
-        };
+    TUIInputMoreCellData *takePictureData = [[TUIInputMoreCellData alloc] init];
+    takePictureData.priority = 900;
+    takePictureData.title = TIMCommonLocalizableString(TUIKitMoreCamera);
+    takePictureData.image = TUIChatBundleThemeImage(@"chat_more_camera_img", @"more_camera");
+    takePictureData.onClicked = ^(NSDictionary *actionParam) {
+      if ([weakSelf.delegate respondsToSelector:@selector(onTakePictureMoreCellData)]) {
+          [weakSelf.delegate onTakePictureMoreCellData];
+      }
+    };
 
-        TUIInputMoreCellData *videoData = [[TUIInputMoreCellData alloc] init];
-        videoData.priority = 800;
-        videoData.title = TIMCommonLocalizableString(TUIKitMoreVideo);
-        videoData.image = TUIChatBundleThemeImage(@"chat_more_video_img", @"more_video");
-        videoData.onClicked = ^(NSDictionary *actionParam) {
-          if ([weakSelf.delegate respondsToSelector:@selector(onTakeVideoMoreCellData)]) {
-              [weakSelf.delegate onTakeVideoMoreCellData];
-          }
-        };
+    TUIInputMoreCellData *videoData = [[TUIInputMoreCellData alloc] init];
+    videoData.priority = 800;
+    videoData.title = TIMCommonLocalizableString(TUIKitMoreVideo);
+    videoData.image = TUIChatBundleThemeImage(@"chat_more_video_img", @"more_video");
+    videoData.onClicked = ^(NSDictionary *actionParam) {
+      if ([weakSelf.delegate respondsToSelector:@selector(onTakeVideoMoreCellData)]) {
+          [weakSelf.delegate onTakeVideoMoreCellData];
+      }
+    };
 
-        TUIInputMoreCellData *fileData = [[TUIInputMoreCellData alloc] init];
-        fileData.priority = 700;
-        fileData.title = TIMCommonLocalizableString(TUIKitMoreFile);
-        fileData.image = TUIChatBundleThemeImage(@"chat_more_file_img", @"more_file");
-        fileData.onClicked = ^(NSDictionary *actionParam) {
-          if ([weakSelf.delegate respondsToSelector:@selector(onSelectFileMoreCellData)]) {
-              [weakSelf.delegate onSelectFileMoreCellData];
-          }
-        };
-
-        _builtInInputMoreMenus = @[ photoData, pictureData, videoData, fileData ];
+    TUIInputMoreCellData *fileData = [[TUIInputMoreCellData alloc] init];
+    fileData.priority = 700;
+    fileData.title = TIMCommonLocalizableString(TUIKitMoreFile);
+    fileData.image = TUIChatBundleThemeImage(@"chat_more_file_img", @"more_file");
+    fileData.onClicked = ^(NSDictionary *actionParam) {
+      if ([weakSelf.delegate respondsToSelector:@selector(onSelectFileMoreCellData)]) {
+          [weakSelf.delegate onSelectFileMoreCellData];
+      }
+    };
+    
+    if (!conversationModel) {
+        _builtInInputMoreMenus = @[ albumData, takePictureData, videoData, fileData ];
+    }
+    else {
+        NSMutableArray *formatArray = [NSMutableArray array];
+        if (conversationModel.enableAlbum) {
+            [formatArray addObject:albumData];
+        }
+        
+        if (conversationModel.enableTakePhoto) {
+            [formatArray addObject:takePictureData];
+        }
+        
+        if (conversationModel.enableRecordVideo) {
+            [formatArray addObject:videoData];
+        }
+        if (conversationModel.enableFile) {
+            [formatArray addObject:fileData];
+        }
+        _builtInInputMoreMenus = [NSArray arrayWithArray:formatArray];
     }
     return _builtInInputMoreMenus;
 }
@@ -141,7 +172,7 @@
                                                 NSString *text = TIMCommonLocalizableString(TUIKitWelcome);
                                                 NSString *link = TUITencentCloudHomePageEN;
                                                 NSString *language = [TUIGlobalization tk_localizableLanguageKey];
-                                                if ([language containsString:@"zh-"]) {
+                                                if ([language tui_containsString:@"zh-"]) {
                                                     link = TUITencentCloudHomePageCN;
                                                 }
                                                 NSError *error = nil;
@@ -221,15 +252,111 @@
     NSString *display = [self.delegate dataProvider:self mergeForwardMsgAbstactForMessage:msg];
 
     if (display.length == 0) {
-        display = [TUIMessageDataProvider getDisplayString:msg];
+        display = [self.class parseAbstractDisplayWStringFromMessageElement:msg];
     }
     NSString * splitStr = @":";
     splitStr = @"\u202C:";
-    if (desc.length > 0 && display.length > 0) {
-        desc = [desc stringByAppendingFormat:@"%@", splitStr];
-        desc = [desc stringByAppendingFormat:@"%@", display];
+    
+    NSString *nameFormat = [desc stringByAppendingFormat:@"%@", splitStr];
+    return  [self.class alignEmojiStringWithUserName:nameFormat
+                                                text:display];
+}
+
++ (nullable NSString *)parseAbstractDisplayWStringFromMessageElement:(V2TIMMessage *)message {
+    NSString *str = nil;
+    if (message.elemType == V2TIM_ELEM_TYPE_TEXT) {
+        NSString *content = message.textElem.text;
+        str = content;
     }
-    return desc;
+    else {
+        str =  [TUIMessageDataProvider getDisplayString:message];
+    }
+    return str;
+}
+
++ (NSString *)alignEmojiStringWithUserName:(NSString *)userName text:(NSString *)text {
+    NSArray *textList = [self.class splitEmojiText:text];
+    NSInteger forwardMsgLength = 98;
+    NSMutableString *sb = [NSMutableString string];
+    [sb appendString:userName];
+    NSInteger length = userName.length;
+    for (NSString *textItem in textList) {
+        BOOL isFaceChar = [self.class isFaceStrKey:textItem];
+        if (isFaceChar) {
+            if (length + textItem.length < forwardMsgLength) {
+                [sb appendString:textItem];
+                length += textItem.length;
+            } else {
+                [sb appendString:@"..."];
+                break;
+            }
+        } else {
+            if (length + textItem.length < forwardMsgLength) {
+                [sb appendString:textItem];
+                length += textItem.length;
+            } else {
+                [sb appendString:textItem];
+                break;
+            }
+        }
+    }
+    return sb;
+}
+
++ (BOOL)isFaceStrKey:(NSString*) strkey {
+    id<TUIEmojiMeditorProtocol> service = [[TIMCommonMediator share] getObject:@protocol(TUIEmojiMeditorProtocol)];
+    NSArray <TUIFaceGroup *> * groups = service.getFaceGroup;
+    if ([groups.firstObject.facesMap objectForKey:strkey] != nil) {
+        return YES;
+    } else {
+        return NO;
+    }
+}
+
++ (NSArray<NSString *> *)splitEmojiText:(NSString *)text {
+    NSString *regex = @"\\[(\\S+?)\\]";
+    NSRegularExpression *regexExp = [NSRegularExpression regularExpressionWithPattern:regex options:0 error:nil];
+    NSArray<NSTextCheckingResult *> *matches = [regexExp matchesInString:text options:0 range:NSMakeRange(0, text.length)];
+    NSMutableArray<TUISplitEmojiData *> *emojiDataList = [NSMutableArray array];
+    NSInteger lastMentionIndex = -1;
+    for (NSTextCheckingResult *match in matches) {
+        NSString *emojiKey = [text substringWithRange:match.range];
+        NSInteger start;
+        if (lastMentionIndex != -1) {
+            start = [text rangeOfString:emojiKey options:0 range:NSMakeRange(lastMentionIndex, text.length - lastMentionIndex)].location;
+        } else {
+            start = [text rangeOfString:emojiKey].location;
+        }
+        NSInteger end = start + emojiKey.length;
+        lastMentionIndex = end;
+
+        
+        if (![self.class isFaceStrKey:emojiKey]) {
+            continue;
+        }
+        TUISplitEmojiData *emojiData = [[TUISplitEmojiData alloc] init];
+        emojiData.start = start;
+        emojiData.end = end;
+        [emojiDataList addObject:emojiData];
+    }
+    NSMutableArray<NSString *> *stringList = [NSMutableArray array];
+    NSInteger offset = 0;
+    for (TUISplitEmojiData *emojiData in emojiDataList) {
+        NSInteger start = emojiData.start - offset;
+        NSInteger end = emojiData.end - offset;
+        NSString *startStr = [text substringToIndex:start];
+        NSString *middleStr = [text substringWithRange:NSMakeRange(start, end - start)];
+        text = [text substringFromIndex:end];
+        if (startStr.length > 0) {
+            [stringList addObject:startStr];
+        }
+        [stringList addObject:middleStr];
+        offset += startStr.length + middleStr.length;
+    }
+    if (text.length > 0) {
+        [stringList addObject:text];
+    }
+    return stringList;
 }
 
 #pragma mark - CellData
@@ -243,6 +370,10 @@
     BOOL isNeedAudioCall = [TUIChatConfig defaultConfig].enableAudioCall && conversationModel.enableAudioCall;
     BOOL isNeedWelcomeCustomMessage = [TUIChatConfig defaultConfig].enableWelcomeCustomMessage && conversationModel.enableWelcomeCustomMessage;
     BOOL isNeedRoom = conversationModel.enabelRoom;
+    BOOL isNeedPoll = conversationModel.enablePoll;
+    BOOL isNeedGroupNote = conversationModel.enableGroupNote;
+
+    self.builtInInputMoreMenus = [self configBuiltInInputMoreMenusWithConversationModel:conversationModel];
     
     NSMutableArray *moreMenus = [NSMutableArray array];
     [moreMenus addObjectsFromArray:self.builtInInputMoreMenus];
@@ -264,6 +395,8 @@
     extensionParam[TUICore_TUIChatExtension_InputViewMoreItem_FilterVideoCall] = @(!isNeedVideoCall);
     extensionParam[TUICore_TUIChatExtension_InputViewMoreItem_FilterAudioCall] = @(!isNeedAudioCall);
     extensionParam[TUICore_TUIChatExtension_InputViewMoreItem_FilterRoom]  = @(!isNeedRoom);
+    extensionParam[TUICore_TUIChatExtension_InputViewMoreItem_FilterPoll]  = @(!isNeedPoll);
+    extensionParam[TUICore_TUIChatExtension_InputViewMoreItem_FilterGroupNote]  = @(!isNeedGroupNote);
     extensionParam[TUICore_TUIChatExtension_InputViewMoreItem_ActionVC] = actionController;
     NSArray *extensionList = [TUICore getExtensionList:TUICore_TUIChatExtension_InputViewMoreItem_ClassicExtensionID param:extensionParam];
     for (TUIExtensionInfo *info in extensionList) {

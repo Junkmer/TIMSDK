@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIGroup'
-  spec.version      = '7.7.5282'
+  spec.version      = '8.0.5895'
   spec.platform     = :ios 
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',
@@ -16,15 +16,15 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/7.7.5282/ios/TUIGroup.zip?time=2'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.0.5895/ios/TUIGroup.zip?time=2'}
 
   spec.default_subspec = 'ALL'
 
   spec.subspec 'CommonModel' do |commonModel|
     commonModel.source_files = '**/TUIGroup/CommonModel/*.{h,m,mm}'
-    commonModel.dependency 'TXIMSDK_Plus_iOS','7.7.5282'
-    commonModel.dependency 'TUICore','7.7.5282'
-    commonModel.dependency 'TIMCommon','7.7.5282'
+    commonModel.dependency 'TXIMSDK_Plus_iOS_XCFramework'
+    commonModel.dependency 'TUICore'
+    commonModel.dependency 'TIMCommon','~> 8.0.5895'
     commonModel.dependency 'ReactiveObjC'
     commonModel.dependency 'Masonry'
   end
@@ -63,9 +63,7 @@ Pod::Spec.new do |spec|
       header.source_files = '**/TUIGroup/UI_Classic/Header/*.{h,m,mm}'
       header.dependency "TUIGroup/UI_Classic/Service"
     end
-    uiClassic.resource = [
-      '**/TUIGroup/Resources/*.bundle'
-    ]
+    uiClassic.resource = ['**/TUIGroup/Resources/*.bundle']
   end
 
   spec.subspec 'UI_Minimalist' do |uiMinimalist|
@@ -95,9 +93,7 @@ Pod::Spec.new do |spec|
       header.source_files = '**/TUIGroup/UI_Minimalist/Header/*.{h,m,mm}'
       header.dependency "TUIGroup/UI_Minimalist/Service"
     end
-    uiMinimalist.resource = [
-      '**/TUIGroup/Resources/*.bundle'
-    ]
+    uiMinimalist.resource = ['**/TUIGroup/Resources/*.bundle']
   end
 
   spec.subspec 'ALL' do |all|
@@ -105,11 +101,9 @@ Pod::Spec.new do |spec|
     all.dependency "TUIGroup/UI_Minimalist"
   end
 
-  spec.pod_target_xcconfig = {
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64'
-  }
-  spec.user_target_xcconfig = {
-   'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64'
+
+  spec.resource_bundle = {
+    "#{spec.module_name}_Privacy" => '**/TUIGroup/Resources/PrivacyInfo.xcprivacy'
   }
 end
 

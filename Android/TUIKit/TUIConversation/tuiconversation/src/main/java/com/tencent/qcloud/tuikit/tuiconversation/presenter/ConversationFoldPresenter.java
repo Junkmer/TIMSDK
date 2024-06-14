@@ -3,9 +3,11 @@ package com.tencent.qcloud.tuikit.tuiconversation.presenter;
 import android.text.TextUtils;
 import com.tencent.imsdk.v2.V2TIMConversation;
 import com.tencent.imsdk.v2.V2TIMConversationListFilter;
+import com.tencent.imsdk.v2.V2TIMMessage;
 import com.tencent.imsdk.v2.V2TIMUserStatus;
 import com.tencent.qcloud.tuicore.TUIConstants;
 import com.tencent.qcloud.tuicore.TUICore;
+import com.tencent.qcloud.tuikit.timcommon.bean.TUIMessageBean;
 import com.tencent.qcloud.tuikit.timcommon.component.interfaces.IUIKitCallback;
 import com.tencent.qcloud.tuikit.tuiconversation.TUIConversationService;
 import com.tencent.qcloud.tuikit.tuiconversation.bean.ConversationInfo;
@@ -19,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class ConversationFoldPresenter {
     private static final String TAG = ConversationFoldPresenter.class.getSimpleName();
@@ -106,6 +109,11 @@ public class ConversationFoldPresenter {
             public void onConversationDeleted(List<String> conversationIDList) {
                 ConversationFoldPresenter.this.onConversationDeleted(conversationIDList);
             }
+
+            @Override
+            public void onConversationLastMessageBeanChanged(String conversationID, TUIMessageBean messageBean) {
+                ConversationFoldPresenter.this.onConversationLastMessageBeanChanged(conversationID, messageBean);
+            }
         };
         TUIConversationService.getInstance().addConversationEventListener(conversationEventForMarkObserver);
     }
@@ -154,16 +162,13 @@ public class ConversationFoldPresenter {
         }
     }
 
-    /**
-     * 有新的会话
-     * @param conversationInfoList 新的会话列表
-     */
     public void onNewConversation(List<ConversationInfo> conversationInfoList) {
         TUIConversationLog.i(TAG, "onNewConversation conversations:" + conversationInfoList);
 
         if (conversationInfoList.size() == 0) {
             return;
         }
+        getLastMessageBean(conversationInfoList);
 
         ArrayList<ConversationInfo> processedInfoList = processFoldedAndHiddenConversation(conversationInfoList);
 
@@ -173,7 +178,7 @@ public class ConversationFoldPresenter {
             ConversationInfo update = iterator.next();
             for (int i = 0; i < loadedConversationInfoList.size(); i++) {
                 ConversationInfo cacheInfo = loadedConversationInfoList.get(i);
-                // 去重
+                
                 if (cacheInfo.getConversationId().equals(update.getConversationId())) {
                     loadedConversationInfoList.set(i, update);
                     iterator.remove();
@@ -183,7 +188,6 @@ public class ConversationFoldPresenter {
             }
         }
 
-        // 对新增会话排序，避免插入 recyclerview 时错乱
         Collections.sort(processedInfoList);
         loadedConversationInfoList.addAll(processedInfoList);
         if (adapter != null) {
@@ -207,7 +211,7 @@ public class ConversationFoldPresenter {
 
     public void onConversationChanged(List<ConversationInfo> conversationInfoList) {
         TUIConversationLog.i(TAG, "onConversationChanged conversations:" + conversationInfoList);
-
+        getLastMessageBean(conversationInfoList);
         ArrayList<ConversationInfo> addInfoList = new ArrayList<>();
         ArrayList<ConversationInfo> infoList = processFoldedAndHiddenConversation(conversationInfoList);
 
@@ -240,7 +244,7 @@ public class ConversationFoldPresenter {
         refreshChangedInfo(loadedConversationInfoList, changedInfoList);
     }
 
-    private void refreshChangedInfo(List<ConversationInfo> uiSourceInfoList, ArrayList<ConversationInfo> changedInfoList) {
+    private void refreshChangedInfo(List<ConversationInfo> uiSourceInfoList, List<ConversationInfo> changedInfoList) {
         Collections.sort(changedInfoList);
 
         HashMap<ConversationInfo, Integer> indexMap = new HashMap<>();
@@ -248,7 +252,7 @@ public class ConversationFoldPresenter {
             ConversationInfo update = changedInfoList.get(j);
             for (int i = 0; i < uiSourceInfoList.size(); i++) {
                 ConversationInfo cacheInfo = uiSourceInfoList.get(i);
-                // 单个会话刷新时找到老的会话数据，替换
+                
                 if (cacheInfo.getConversationId().equals(update.getConversationId())) {
                     if (update.getStatusType() == V2TIMUserStatus.V2TIM_USER_STATUS_UNKNOWN) {
                         update.setStatusType(cacheInfo.getStatusType());
@@ -356,22 +360,12 @@ public class ConversationFoldPresenter {
         }
     }
 
-    /**
-     * 删除会话，会将本地会话数据从imsdk中删除
-     *
-     * @param conversation 会话信息
-     */
     public void deleteConversation(ConversationInfo conversation) {
         HashMap<String, Object> param = new HashMap<>();
         param.put(TUIConstants.TUIConversation.CONVERSATION_ID, conversation.getConversationId());
         TUICore.callService(TUIConstants.TUIConversation.SERVICE_NAME, TUIConstants.TUIConversation.METHOD_DELETE_CONVERSATION, param);
     }
 
-    /**
-     * 隐藏会话
-     * hide conversation
-     * @param conversationInfo 会话信息 conversation info
-     */
     public void markConversationHidden(ConversationInfo conversationInfo, boolean isHidden) {
         if (conversationInfo == null || TextUtils.isEmpty(conversationInfo.getConversationId())) {
             TUIConversationLog.e(TAG, "markConversationHidden error: invalid conversationInfo");
@@ -454,5 +448,44 @@ public class ConversationFoldPresenter {
         for (String conversationId : conversationIdList) {
             deleteConversationFromUI(conversationId);
         }
+    }
+
+    private void getLastMessageBean(List<ConversationInfo> conversationInfoList) {
+        if (conversationInfoList == null || conversationInfoList.isEmpty()) {
+            return;
+        }
+
+        HashMap<String, Object> param = new HashMap<>();
+        Map<String, V2TIMMessage> v2TIMMessageMap = new HashMap<>();
+        for (ConversationInfo conversationInfo : conversationInfoList) {
+            if (conversationInfo.getLastMessage() != null && conversationInfo.getLastTUIMessageBean() == null) {
+                v2TIMMessageMap.put(conversationInfo.getConversationId(), conversationInfo.getLastMessage());
+            }
+        }
+        param.put(TUIConstants.TUIChat.Method.GetMessagesDisplayString.MESSAGE_MAP, v2TIMMessageMap);
+        TUICore.callService(TUIConstants.TUIChat.SERVICE_NAME, TUIConstants.TUIChat.Method.GetMessagesDisplayString.METHOD_NAME, param);
+    }
+
+    private void onConversationLastMessageBeanChanged(String conversationID, TUIMessageBean messageBean) {
+        ConversationInfo changedInfo = null;
+        for (ConversationInfo conversationInfo : loadedConversationInfoList) {
+            if (TextUtils.equals(conversationInfo.getConversationId(), conversationID)) {
+                if (conversationInfo.getLastMessage() != null) {
+                    String msgID = conversationInfo.getLastMessage().getMsgID();
+                    if (TextUtils.equals(msgID, messageBean.getId())) {
+                        conversationInfo.setLastTUIMessageBean(messageBean);
+                        changedInfo = conversationInfo;
+                        break;
+                    }
+                }
+            }
+        }
+        if (changedInfo == null) {
+            return;
+        }
+        if (adapter != null) {
+            adapter.onConversationChanged(Collections.singletonList(changedInfo));
+        }
+        refreshChangedInfo(loadedConversationInfoList, Collections.singletonList(changedInfo));
     }
 }

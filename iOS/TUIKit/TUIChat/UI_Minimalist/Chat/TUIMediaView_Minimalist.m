@@ -3,7 +3,7 @@
 //  UIKit
 //
 //  Created by kennethmiao on 2018/9/18.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 
 #import "TUIMediaView_Minimalist.h"
@@ -190,21 +190,13 @@
 
 #pragma mark TUIMediaCollectionCellDelegate
 - (void)onCloseMedia:(TUIMediaCollectionCell_Minimalist *)cell {
-    [self.menuCollectionView removeFromSuperview];
-    cell.imageView.hidden = NO;
-    [self.mediaView addSubview:cell.imageView];
-    [UIView animateWithDuration:ANIMATION_TIME
-                     animations:^{
-                       self.mediaView.frame = self.thumbFrame;
-                       self.coverView.alpha = 0;
-                     }];
-
-    __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ANIMATION_TIME * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-      [weakSelf removeFromSuperview];
-      if (weakSelf.onClose) {
-          weakSelf.onClose();
-      }
-    });
+    if (self.onClose) {
+        self.onClose();
+    }
+    if (self.superview) {
+        [self removeFromSuperview];
+    }
+    [[NSNotificationCenter defaultCenter] postNotificationName:kDisableAllRotationOrientationNotification object:nil];
 }
+
 @end

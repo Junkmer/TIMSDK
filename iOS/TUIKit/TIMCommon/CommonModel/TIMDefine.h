@@ -19,4 +19,8 @@
 #define kEnableAllRotationOrientationNotification @"kEnableAllRotationOrientationNotification"
 #define kDisableAllRotationOrientationNotification @"kDisableAllRotationOrientationNotification"
 #define TUIMessageMediaViewDeviceOrientationChangeNotification @"TUIMessageMediaViewDeviceOrientationChangeNotification"
+
+//Provide customers with the ability to modify the default emoji expression size in various input behaviors
+#define kTIMDefaultEmojiSize CGSizeMake(23, 23)
+
 #endif /* TIMDefine_h */

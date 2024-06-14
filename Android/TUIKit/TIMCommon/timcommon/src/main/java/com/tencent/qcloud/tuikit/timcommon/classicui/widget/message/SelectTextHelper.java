@@ -2,29 +2,18 @@ package com.tencent.qcloud.tuikit.timcommon.classicui.widget.message;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.LayerDrawable;
-import android.graphics.drawable.ShapeDrawable;
 import android.os.Build;
 import android.text.Layout;
 import android.text.Selection;
 import android.text.Spannable;
-import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
-import android.text.style.BackgroundColorSpan;
 import android.text.style.ClickableSpan;
-import android.text.style.ImageSpan;
 import android.text.style.URLSpan;
 import android.util.Pair;
-import android.view.ActionMode;
 import android.view.Gravity;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -36,13 +25,8 @@ import android.widget.TextView;
 import androidx.annotation.ColorInt;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
-import com.tencent.qcloud.tuikit.timcommon.classicui.component.BeginnerGuidePage;
-import com.tencent.qcloud.tuikit.timcommon.component.face.FaceManager;
-import com.tencent.qcloud.tuikit.timcommon.util.TIMCommonLog;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class SelectTextHelper {
     private static final String TAG = SelectTextHelper.class.getSimpleName();
@@ -62,7 +46,7 @@ public class SelectTextHelper {
 
     private int mTouchX;
     private int mTouchY;
-    private int mTextViewMarginStart = 0; // textView的marginStart值
+    private int mTextViewMarginStart = 0; 
 
     private int mSelectedColor;
     private int mCursorHandleColor;
@@ -86,23 +70,23 @@ public class SelectTextHelper {
     private View.OnTouchListener mRootTouchListener;
 
     public interface OnSelectListener {
-        void onClick(View v); // 点击textView
+        void onClick(View v); 
 
-        void onLongClick(View v); // 长按textView
+        void onLongClick(View v); 
 
-        void onTextSelected(CharSequence content); // 选中文本回调
+        void onTextSelected(CharSequence content); 
 
-        void onDismiss(); // 解除弹窗回调
+        void onDismiss(); 
 
-        void onClickUrl(String url); // 点击文本里的url回调
+        void onClickUrl(String url); 
 
-        void onSelectAllShowCustomPop(); // 全选显示自定义弹窗回调
+        void onSelectAllShowCustomPop(); 
 
-        void onReset(); // 重置回调
+        void onReset(); 
 
-        void onDismissCustomPop(); // 解除自定义弹窗回调
+        void onDismissCustomPop(); 
 
-        void onScrolling(); // 正在滚动回调
+        void onScrolling(); 
     }
 
     public static class Builder {
@@ -124,73 +108,46 @@ public class SelectTextHelper {
             mTextView = textView;
         }
 
-        /**
-         * 选择游标颜色
-         */
         public Builder setCursorHandleColor(@ColorInt int cursorHandleColor) {
             mCursorHandleColor = cursorHandleColor;
             return this;
         }
 
-        /**
-         * 选择游标大小
-         */
         public Builder setCursorHandleSizeInDp(float cursorHandleSizeInDp) {
             mCursorHandleSizeInDp = cursorHandleSizeInDp;
             return this;
         }
 
-        /**
-         * 选中文本的颜色
-         */
         public Builder setSelectedColor(@ColorInt int selectedBgColor) {
             mSelectedColor = selectedBgColor;
             return this;
         }
 
-        /**
-         * 全选
-         */
         public Builder setSelectAll(boolean selectAll) {
             mSelectAll = selectAll;
             return this;
         }
 
-        /**
-         * 已经全选无弹窗
-         */
         public Builder setSelectedAllNoPop(boolean selectedAllNoPop) {
             mSelectedAllNoPop = selectedAllNoPop;
             return this;
         }
 
-        /**
-         * 滑动依然显示弹窗
-         */
         public Builder setScrollShow(boolean scrollShow) {
             mScrollShow = scrollShow;
             return this;
         }
 
-        /**
-         * 显示放大镜
-         */
         public Builder setMagnifierShow(boolean magnifierShow) {
             mMagnifierShow = magnifierShow;
             return this;
         }
 
-        /**
-         * 弹窗每行个数
-         */
         public Builder setPopSpanCount(int popSpanCount) {
             mPopSpanCount = popSpanCount;
             return this;
         }
 
-        /**
-         * 弹窗背景颜色、弹窗箭头
-         */
         public Builder setPopStyle(int popBgResource, int popArrowImg) {
             mPopBgResource = popBgResource;
             mPopArrowImg = popArrowImg;
@@ -236,29 +193,19 @@ public class SelectTextHelper {
         init();
     }
 
-    /**
-     * 重置弹窗
-     */
     public void reset() {
-        TIMCommonLog.d(TAG, "reset");
         hideSelectView();
         resetSelectionInfo();
-        // 重置弹窗回调
+        
         if (mSelectListener != null) {
             mSelectListener.onReset();
         }
     }
 
-    /**
-     * 选择文本监听
-     */
     public void setSelectListener(OnSelectListener selectListener) {
         mSelectListener = selectListener;
     }
 
-    /**
-     * 销毁
-     */
     public void destroy() {
         mTextView.getViewTreeObserver().removeOnScrollChangedListener(mOnScrollChangedListener);
         mTextView.getViewTreeObserver().removeOnPreDrawListener(mOnPreDrawListener);
@@ -268,9 +215,6 @@ public class SelectTextHelper {
         mEndHandle = null;
     }
 
-    /**
-     * 全选
-     */
     public void selectAll() {
         showAllView();
     }
@@ -305,12 +249,7 @@ public class SelectTextHelper {
         mTextView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                BeginnerGuidePage.showBeginnerGuideThen(mTextView, new Runnable() {
-                    @Override
-                    public void run() {
-                        onLongTextViewClick();
-                    }
-                });
+                onLongTextViewClick();
                 return true;
             }
 
@@ -332,7 +271,7 @@ public class SelectTextHelper {
                             isHideWhenScroll = false;
                             postShowSelectView(DEFAULT_SHOW_DURATION);
                         }
-                        // 拿textView的x坐标
+                        
                         if (0 == mTextViewMarginStart) {
                             int[] location = new int[2];
                             mTextView.getLocationInWindow(location);
@@ -343,7 +282,7 @@ public class SelectTextHelper {
                 };
                 mTextView.getViewTreeObserver().addOnPreDrawListener(mOnPreDrawListener);
 
-                // 根布局监听
+                
                 mRootTouchListener = new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
@@ -387,7 +326,7 @@ public class SelectTextHelper {
                 }
             }
         });
-        // 此setMovementMethod可被修改
+        
         mTextView.setMovementMethod(new LinkMovementMethodInterceptor());
     }
 
@@ -419,11 +358,9 @@ public class SelectTextHelper {
         isHide = true;
         usedClickListener = false;
         if (mStartHandle != null) {
-            TIMCommonLog.d(TAG, "mStartHandle.dismiss();");
             mStartHandle.dismiss();
         }
         if (mEndHandle != null) {
-            TIMCommonLog.d(TAG, "mEndHandle.dismiss();");
             mEndHandle.dismiss();
         }
     }
@@ -431,7 +368,6 @@ public class SelectTextHelper {
     private void resetSelectionInfo() {
         mSelectionInfo.mSelectionContent = null;
         if (mSpannable != null) {
-            TIMCommonLog.d(TAG, "mSpannable.removeSpan(mSpan);");
             Selection.removeSelection(mSpannable);
         }
     }
@@ -460,7 +396,6 @@ public class SelectTextHelper {
     }
 
     /**
-     * 全选
      * Select all
      */
     private void showAllView() {
@@ -505,6 +440,7 @@ public class SelectTextHelper {
             mSelectionInfo.mStart = mSelectionInfo.mEnd;
             mSelectionInfo.mEnd = temp;
         }
+
         mTextView.requestFocus();
         mSelectionInfo.mSelectionContent = mSpannable.subSequence(mSelectionInfo.mStart, mSelectionInfo.mEnd).toString();
         Selection.setSelection(mSpannable, mSelectionInfo.mStart, mSelectionInfo.mEnd);
@@ -513,9 +449,6 @@ public class SelectTextHelper {
         }
     }
 
-    /**
-     * 游标
-     */
     private class CursorHandle extends View {
         private PopupWindow mPopupWindow;
         private Paint mPaint;
@@ -523,7 +456,7 @@ public class SelectTextHelper {
         private int mCircleRadius = mCursorHandleSize / 2;
         private int mWidth = mCursorHandleSize;
         private int mHeight = mCursorHandleSize;
-        private int mPadding = 32; // 游标padding
+        private int mPadding = 32; 
         private boolean isLeft;
 
         public CursorHandle(boolean isLeft) {
@@ -567,7 +500,7 @@ public class SelectTextHelper {
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     if (mMagnifierShow) {
-                        // android 9 放大镜
+                        
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && null != mMagnifier) {
                             mMagnifier.dismiss();
                         }
@@ -579,10 +512,10 @@ public class SelectTextHelper {
                     }
                     int rawX = (int) event.getRawX();
                     int rawY = (int) event.getRawY();
-                    // x y不准 x 减去textView距离x轴距离值  y减去字体大小的像素值
+                    
                     update(rawX + mAdjustX - mWidth - mTextViewMarginStart, rawY + mAdjustY - mHeight - (int) mTextView.getTextSize());
                     if (mMagnifierShow) {
-                        // android 9 放大镜功能
+                        
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                             if (null == mMagnifier) {
                                 mMagnifier = new Magnifier(mTextView);
@@ -697,9 +630,6 @@ public class SelectTextHelper {
         public String mSelectionContent;
     }
 
-    /**
-     * 处理内容链接跳转
-     */
     private class LinkMovementMethodInterceptor extends LinkMovementMethod {
         private long downLinkTime;
 
@@ -725,11 +655,11 @@ public class SelectTextHelper {
 
                 if (links.length != 0) {
                     if (action == MotionEvent.ACTION_UP) {
-                        // 长按
+                        
                         if (downLinkTime + ViewConfiguration.getLongPressTimeout() < System.currentTimeMillis()) {
                             return false;
                         }
-                        // 点击
+                        
                         if (links[0] instanceof URLSpan) {
                             URLSpan url = (URLSpan) links[0];
                             if (!TextUtils.isEmpty(url.getURL())) {
@@ -861,13 +791,6 @@ public class SelectTextHelper {
         return (int) (dpValue * Resources.getSystem().getDisplayMetrics().density + 0.5f);
     }
 
-    /**
-     * 设置宽高
-     *
-     * @param v
-     * @param w
-     * @param h
-     */
     public static void setWidthHeight(View v, int w, int h) {
         ViewGroup.LayoutParams params = v.getLayoutParams();
         params.width = w;
@@ -875,14 +798,8 @@ public class SelectTextHelper {
         v.setLayoutParams(params);
     }
 
-    /**
-     * 通知栏的高度
-     */
     private static int STATUS_HEIGHT = 0;
 
-    /**
-     * 获取通知栏的高度
-     */
     public static int getStatusHeight() {
         if (0 != STATUS_HEIGHT) {
             return STATUS_HEIGHT;

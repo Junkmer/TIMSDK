@@ -3,7 +3,7 @@
 //  TUIKit
 //
 //  Created by kennethmiao on 2018/11/1.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 
 #import <SDWebImage/SDImageCoderHelper.h>
@@ -31,11 +31,11 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
     
     /////////////////////////////////////////////////////////////////////////////////
     //
-    //                      （一）IM SDK 的错误码
+    //                      （1）IM SDK
     //
     /////////////////////////////////////////////////////////////////////////////////
 
-    // 通用错误码
+    //General error code
     [map setObject:TUIKitLocalizableString(TUIKitErrorInProcess) forKey:@(ERR_IN_PROGESS)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorInvalidParameters) forKey:@(ERR_INVALID_PARAMETERS)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorIOOperateFaild) forKey:@(ERR_IO_OPERATION_FAILED)];
@@ -120,10 +120,17 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
     [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetWaitInQueueTimeout) forKey:@(ERR_SDK_NET_WAIT_INQUEUE_TIMEOUT)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetWaitSendTimeout) forKey:@(ERR_SDK_NET_WAIT_SEND_TIMEOUT)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetWaitAckTimeut) forKey:@(ERR_SDK_NET_WAIT_ACK_TIMEOUT)];
+    [map setObject:TUIKitLocalizableString(TUIKitErrorSDKWaitSendRemainingTimeout) forKey:@(ERR_SDK_NET_WAIT_SEND_REMAINING_TIMEOUT)];
+    [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetPKGSizeLimit) 
+            forKey:@(ERR_SDK_NET_PKG_SIZE_LIMIT)];
+    [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetWaitSendTimeoutNoNetwork) forKey:@(ERR_SDK_NET_WAIT_SEND_TIMEOUT_NO_NETWORK)];
+    [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetWaitAckTimeoutNoNetwork) forKey:@(ERR_SDK_NET_WAIT_ACK_TIMEOUT_NO_NETWORK)];
+    [map setObject:TUIKitLocalizableString(TUIKitErrorSDKNetRemainingTimeoutNoNetwork) forKey:@(ERR_SDK_NET_SEND_REMAINING_TIMEOUT_NO_NETWORK)];
+
     
     /////////////////////////////////////////////////////////////////////////////////
     //
-    //                      （二）Server
+    //                      （2）Server
     //
     /////////////////////////////////////////////////////////////////////////////////
 
@@ -231,6 +238,7 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipPendencyLimit) forKey:@(ERR_SVR_FRIENDSHIP_PENDENCY_LIMIT)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipBlacklistLimit) forKey:@(ERR_SVR_FRIENDSHIP_BLACKLIST_LIMIT)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipPeerFriendLimit) forKey:@(ERR_SVR_FRIENDSHIP_PEER_FRIEND_LIMIT)];
+    [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipAlreadyFriends) forKey:@(ERR_SVR_FRIENDSHIP_ALREADY_FRIENDS)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipInSelfBlacklist) forKey:@(ERR_SVR_FRIENDSHIP_IN_SELF_BLACKLIST)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipAllowTypeDenyAny) forKey:@(ERR_SVR_FRIENDSHIP_ALLOW_TYPE_DENY_ANY)];
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRFriendshipInPeerBlackList) forKey:@(ERR_SVR_FRIENDSHIP_IN_PEER_BLACKLIST)];
@@ -313,7 +321,7 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
     
     /////////////////////////////////////////////////////////////////////////////////
     //
-    //                      （三）Version 3 deprecated
+    //                      （3）Version 3 deprecated
     //
     /////////////////////////////////////////////////////////////////////////////////
     [map setObject:TUIKitLocalizableString(TUIKitErrorSVRNoSuccessResult) forKey:@(ERR_NO_SUCC_RESULT)];
@@ -441,8 +449,8 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
     }
 
     dispatch_async(queue, ^{
-      // gif
-      if ([path containsString:@".gif"]) {
+      // The path ends with gif:
+      if ([path tui_containsString:@".gif"]) {
           UIImage *image = [UIImage sd_imageWithGIFData:[NSData dataWithContentsOfFile:path]];
           callback(path, image);
           return;
@@ -454,6 +462,14 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
           image = [UIImage imageWithContentsOfFile:path];
       }
 
+      // There is no path ending, but it may actually be a gif image
+      if (image == nil) {
+         NSString *formatPath = [path stringByAppendingString:@".gif"];
+         image = [UIImage sd_imageWithGIFData:[NSData dataWithContentsOfFile:formatPath]];
+         callback(formatPath, image);
+         return;
+      }
+        
       if (image == nil) {
           callback(path, image);
           return;
@@ -813,7 +829,7 @@ static NSMutableDictionary * gIMErrorMsgMap = nil;
     NSString *englishPurchase = @"https://intl.cloud.tencent.com/document/product/1047/36021?lang=en&pg=#changing-configuration";
     NSString *language = [TUIGlobalization tk_localizableLanguageKey];
     NSURL *url = [NSURL URLWithString:chinesePurchase];
-    if (![language containsString:@"zh-"]) {
+    if (![language tui_containsString:@"zh-"]) {
         url = [NSURL URLWithString:englishPurchase];
     }
     [TUITool openLinkWithURL:url];

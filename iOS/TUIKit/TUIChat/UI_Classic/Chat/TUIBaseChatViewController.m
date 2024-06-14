@@ -41,7 +41,9 @@
 #import "TUIVoiceMessageCellData.h"
 
 static UIView *gCustomTopView;
-
+static UIView *gTopExentsionView;
+static UIView *gGroupPinTopView;
+static CGRect gCustomTopViewRect;
 @interface TUIBaseChatViewController () <TUIBaseMessageControllerDelegate,
                                          TUIInputControllerDelegate,
                                          UIImagePickerControllerDelegate,
@@ -79,6 +81,11 @@ static UIView *gCustomTopView;
     if (self) {
         [TUIBaseChatViewController createCachePath];
         [[TUIAIDenoiseSignatureManager sharedInstance] updateSignature];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(reloadTopViewsAndMessagePage)
+                                                     name:TUICore_TUIChatExtension_ChatViewTopArea_ChangedNotification
+                                                   object:nil];
+
     }
     return self;
 }
@@ -90,6 +97,8 @@ static UIView *gCustomTopView;
 - (void)viewDidLoad {
     [super viewDidLoad];
 
+    [self setupTopViews];
+    
     // data provider
     self.dataProvider = [[TUIChatDataProvider alloc] init];
     self.dataProvider.delegate = self;
@@ -114,10 +123,64 @@ static UIView *gCustomTopView;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self configTopViewsViewWillAppear];
+}
+
+- (void)configTopViewsViewWillAppear {
+    if (gCustomTopView.superview != self.view) {
+        if (CGRectEqualToRect(gCustomTopView.frame, CGRectZero)) {
+            gCustomTopView.frame = CGRectMake(0, CGRectGetMaxY(gTopExentsionView.frame), gCustomTopViewRect.size.width, gCustomTopViewRect.size.height);
+        }
+        [self.view addSubview:gCustomTopView];
+    }
+    if (gTopExentsionView.superview != self.view) {
+        [self.view addSubview:gTopExentsionView];
+    }
+    if (gGroupPinTopView.superview != self.view && self.conversationData.groupID.length > 0){
+        [self.view addSubview:gGroupPinTopView];
+    }
+    
+    [self reloadTopViewsAndMessagePage];
+}
+- (void)setupTopViews {
+    if (gTopExentsionView) {
+        [gTopExentsionView removeFromSuperview];
+    }
+    else {
+        gTopExentsionView = [[UIView alloc] init];
+        gTopExentsionView.clipsToBounds = YES;
+    }
+    if (gGroupPinTopView) {
+        [gGroupPinTopView removeFromSuperview];
+    }
+    else {
+        gGroupPinTopView = [[UIView alloc] init];
+        gGroupPinTopView.clipsToBounds = YES;
+    }
+    
+    if (gTopExentsionView) {
+        [self setupTopExentsionView];
+    }
     if (gCustomTopView) {
         [self setupCustomTopView];
+        gCustomTopView.frame = CGRectMake(0, CGRectGetMaxY(gTopExentsionView.frame), gCustomTopViewRect.size.width, gCustomTopViewRect.size.height);
+    }
+    if (gGroupPinTopView && self.conversationData.groupID.length > 0) {
+        [self setupGroupPinTopView];
+        gGroupPinTopView.frame = CGRectMake(0, CGRectGetMaxY(gCustomTopView.frame), gGroupPinTopView.frame.size.width, gGroupPinTopView.frame.size.height);;
     }
 }
+
+- (void)reloadTopViewsAndMessagePage {
+    gCustomTopView.frame = CGRectMake(0, CGRectGetMaxY(gTopExentsionView.frame), gCustomTopView.frame.size.width, gCustomTopView.frame.size.height);
+    if (gGroupPinTopView) {
+        gGroupPinTopView.frame = CGRectMake(0, CGRectGetMaxY(gCustomTopView.frame), gGroupPinTopView.frame.size.width, gGroupPinTopView.frame.size.height);;
+    }
+    CGFloat textViewHeight = TUIChatConfig.defaultConfig.enableMainPageInputBar? TTextView_Height:0;
+    _messageController.view.frame = CGRectMake(0, [self topMarginByCustomView], self.view.frame.size.width,
+                                               self.view.frame.size.height - textViewHeight - Bottom_SafeHeight - [self topMarginByCustomView]);
+}
+
 - (void)dealloc {
     [TUICore unRegisterEventByObject:self];
 }
@@ -265,11 +328,36 @@ static UIView *gCustomTopView;
     [_messageController didMoveToParentViewController:self];
 }
 
+- (void)setupTopExentsionView {
+    if (gTopExentsionView.superview != self.view) {
+        [self.view addSubview:gTopExentsionView];
+    }
+    gTopExentsionView.frame = CGRectMake(0, 0, self.view.frame.size.width, 0);
+    NSMutableDictionary *param = [NSMutableDictionary dictionary];
+    if (self.conversationData.userID.length > 0) {
+        param[TUICore_TUIChatExtension_ChatViewTopArea_ChatID] = self.conversationData.userID;
+        param[TUICore_TUIChatExtension_ChatViewTopArea_IsGroup] = @"0";
+    } else if (self.conversationData.groupID.length > 0) {
+        param[TUICore_TUIChatExtension_ChatViewTopArea_IsGroup] = @"1";
+        param[TUICore_TUIChatExtension_ChatViewTopArea_ChatID] = self.conversationData.groupID;
+    }
+    [TUICore raiseExtension:TUICore_TUIChatExtension_ChatViewTopArea_ClassicExtensionID parentView:gTopExentsionView param:param];
+
+}
+
+- (void)setupGroupPinTopView {
+    if (gGroupPinTopView.superview != self.view) {
+        [self.view addSubview:gGroupPinTopView];
+    }
+    gGroupPinTopView.backgroundColor = [UIColor clearColor];
+    gGroupPinTopView.frame = CGRectMake(0, 0, self.view.frame.size.width, 0);
+    
+}
+
 - (void)setupCustomTopView {
     if (gCustomTopView.superview != self.view) {
         [self.view addSubview:gCustomTopView];
     }
-    gCustomTopView.mm_top(0).mm_left(0);
 }
 
 - (void)setupBottomContainerView {
@@ -412,7 +500,7 @@ static UIView *gCustomTopView;
     }
 
     /**
-     * 显示草稿
+     * 
      * Display draft
      */
     NSString *draftContent = [jsonDict.allKeys containsObject:@"content"] ? jsonDict[@"content"] : @"";
@@ -426,7 +514,7 @@ static UIView *gCustomTopView;
     NSString *messageRootID = [jsonDict.allKeys containsObject:@"messageRootID"] ? jsonDict[@"messageRootID"] : @"";
 
     /**
-     * 显示消息回复预览
+     * 
      * Display message reply preview bar
      */
     if ([jsonDict isKindOfClass:NSDictionary.class] && [jsonDict.allKeys containsObject:@"messageReply"]) {
@@ -458,10 +546,27 @@ static UIView *gCustomTopView;
 
 + (void)setCustomTopView:(UIView *)view {
     gCustomTopView = view;
+    gCustomTopViewRect = view.frame;
+    gCustomTopView.clipsToBounds = YES;
 }
 
 + (UIView *)customTopView {
     return gCustomTopView;
+}
++ (UIView *)groupPinTopView {
+    return gGroupPinTopView;
+}
++ (UIView *)topAreaBottomView {
+    if (gGroupPinTopView) {
+        return gGroupPinTopView;
+    }
+    if (gCustomTopView) {
+        return gCustomTopView;
+    }
+    if (gTopExentsionView) {
+        return gTopExentsionView;
+    }
+    return nil;
 }
 
 #pragma mark - Getters & Setters
@@ -469,7 +574,7 @@ static UIView *gCustomTopView;
 - (void)setConversationData:(TUIChatConversationModel *)conversationData {
     _conversationData = conversationData;
 
-    // 自定义 conversationData
+    //  conversationData
     NSDictionary *param = @{TUICore_TUIChatExtension_GetChatConversationModelParams_UserID: self.conversationData.userID ? : @""};
     NSArray<TUIExtensionInfo *> *extensionList = [TUICore getExtensionList:TUICore_TUIChatExtension_GetChatConversationModelParams param:param];
     TUIExtensionInfo *extention = extensionList.firstObject;
@@ -483,13 +588,17 @@ static UIView *gCustomTopView;
 }
 
 - (CGFloat)topMarginByCustomView {
-    return gCustomTopView ? gCustomTopView.mm_h : 0;
+    CGFloat gCutomTopViewH = gCustomTopView && gCustomTopView.superview ? gCustomTopView.mm_h : 0 ;
+    CGFloat gTopExtsionH = gTopExentsionView && gTopExentsionView.superview ? gTopExentsionView.mm_h : 0;
+    CGFloat gGroupPinTopViewH = gGroupPinTopView && gGroupPinTopView.superview ? gGroupPinTopView.mm_h : 0;
+
+    CGFloat height = gCutomTopViewH + gTopExtsionH + gGroupPinTopViewH;
+    return height;
 }
 
 #pragma mark - Event Response
 - (void)onChangeUnReadCount:(UInt64)totalCount {
     /**
-     * 此处异步的原因：当前聊天页面连续频繁收到消息，可能还没标记已读，此时也会收到未读数变更。理论上此时未读数不会包括当前会话的。
      * The reason for the asynchrony here: The current chat page receives messages continuously and frequently, it may not be marked as read, and unread changes
      * will also be received at this time. In theory, the unreads at this time will not include the current session.
      */
@@ -525,8 +634,12 @@ static UIView *gCustomTopView;
         } else if (self.conversationData.groupID.length > 0) {
             [TUIChatDataProvider getGroupInfoWithGroupID:self.conversationData.groupID
                                                SuccBlock:^(V2TIMGroupInfoResult *_Nonnull groupResult) {
-                                                 if (groupResult.info.groupName.length > 0) {
+                                                 if (groupResult.info.groupName.length > 0 &&
+                                                     self.conversationData.enabelRoom) {
                                                      self.conversationData.title = groupResult.info.groupName;
+                                                 }
+                                                 if ([groupResult.info.groupType isEqualToString:@"Room"] ) {
+                                                     self.navigationItem.rightBarButtonItems = nil;
                                                  }
                                                }
                                                failBlock:nil];
@@ -678,14 +791,12 @@ static UIView *gCustomTopView;
 
 - (void)inputControllerDidInputAt:(TUIInputController *)inputController {
     /**
-     * 交给 GroupChatVC 去处理
      * Handle to GroupChatVC
      */
 }
 
 - (void)inputController:(TUIInputController *)inputController didDeleteAt:(NSString *)atText {
     /**
-     * 交给 GroupChatVC 去处理
      * Handle to GroupChatVC
      */
 }
@@ -698,6 +809,10 @@ static UIView *gCustomTopView;
     // for C2CChatVC
 }
 
+- (BOOL)currentUserIsSuperOwnerInGroup {
+    //for GroupChatVC
+    return NO;
+}
 - (void)inputController:(TUIInputController *)inputController didSelectMoreCell:(TUIInputMoreCell *)cell {
     cell.disableDefaultSelectAction = NO;
     if (cell.disableDefaultSelectAction) {
@@ -881,7 +996,7 @@ static UIView *gCustomTopView;
     }
 }
 
-#pragma mark - 消息菜单操作: 多选 & 转发
+#pragma mark - :  & 
 - (void)onSelectMessageMenu:(NSInteger)menuType withData:(TUIMessageCellData *)data {
     if (menuType == 0) {
         [self openMultiChooseBoard:YES];
@@ -995,7 +1110,7 @@ static UIView *gCustomTopView;
 
     __weak typeof(self) weakSelf = self;
     UIAlertController *tipsVc = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    // 逐条转发 Forward one-by-one
+    //  Forward one-by-one
     [tipsVc
         tuitheme_addAction:[UIAlertAction actionWithTitle:TIMCommonLocalizableString(TUIKitRelayOneByOneForward)
                                                     style:UIAlertActionStyleDefault
@@ -1020,7 +1135,7 @@ static UIView *gCustomTopView;
                                                                                                   }]];
                                                     [weakSelf presentViewController:vc animated:YES completion:nil];
                                                   }]];
-    // 合并转发 Merge-forward
+    //  Merge-forward
     [tipsVc tuitheme_addAction:[UIAlertAction actionWithTitle:TIMCommonLocalizableString(TUIKitRelayCombineForwad)
                                                         style:UIAlertActionStyleDefault
                                                       handler:^(UIAlertAction *_Nonnull action) {
@@ -1074,7 +1189,7 @@ static UIView *gCustomTopView;
           NSTimeInterval timeInterval = convCellData.groupID.length ? 0.09 : 0.05;
 
           /**
-           * 发送到当前聊天窗口
+           * 
            * Forward to currernt chat vc
            */
           if ([convCellData.conversationID isEqualToString:self.conversationData.conversationID]) {
@@ -1095,7 +1210,7 @@ static UIView *gCustomTopView;
           }
 
           /**
-           * 发送到其他聊天
+           * 
            * Forward to other chat user
            */
         TUISendMessageAppendParams *appendParams = [[TUISendMessageAppendParams alloc] init];
@@ -1110,7 +1225,6 @@ static UIView *gCustomTopView;
                   Progress:nil
                   SuccBlock:^{
                     /**
-                     * 发送到其他聊天的消息需要广播消息发送状态，方便进入对应聊天后刷新消息状态
                      * Messages sent to other chats need to broadcast the message sending status, which is convenient to refresh the message status after
                      * entering the corresponding chat
                      */
@@ -1121,7 +1235,6 @@ static UIView *gCustomTopView;
                   }];
 
               /**
-               * 此处的延时操作是为了在批量逐条转发时，尽可能保证接收端的顺序
                * The delay here is to ensure the order of the receiving end as much as possible when forwarding in batches one by one
                */
               [NSThread sleepForTimeInterval:timeInterval];
@@ -1163,7 +1276,6 @@ static UIView *gCustomTopView;
       NSString *messageRootID = [messageParentReply valueForKey:@"messageRootID"];
       if (!IS_NOT_EMPTY_NSSTRING(messageRootID)) {
           /**
-           * 源消息没有 messageRootID， 则需要将当前源消息的 msgID 作为 root
            * If the original message does not have messageRootID, you need to make the msgID of the current original message as the root
            */
           if (IS_NOT_EMPTY_NSSTRING(replyData.originMessage.msgID)) {
@@ -1204,26 +1316,6 @@ static UIView *gCustomTopView;
       referenceData.originMessage = data.innerMessage;
       [self.inputController showReferencePreview:referenceData];
     }];
-}
-
-#pragma mark - Message react
-/*
- "messageReact": {
-     "reacts": [
-         {
-             "emojiId1": ["userId1","userId2"]
-         },
-         {
-             "emojiId2": ["userId3","userId4"]
-         },
-     ],
-     "version": "1",
- }
- */
-- (void)messageController:(TUIBaseMessageController *)controller modifyMessage:(nonnull TUIMessageCellData *)cellData reactEmoji:(NSString *)emojiName {
-    V2TIMMessage *rootMsg = cellData.innerMessage;
-
-    [[TUIChatModifyMessageHelper defaultHelper] modifyMessage:rootMsg reactEmoji:emojiName];
 }
 
 #pragma mark - Message translation forward

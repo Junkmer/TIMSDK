@@ -1,6 +1,7 @@
 package com.tencent.qcloud.tuikit.tuicallkit.viewmodel.component.videolayout
 
 import com.tencent.qcloud.tuikit.TUICommonDefine
+import com.tencent.qcloud.tuikit.tuicallengine.TUICallDefine
 import com.tencent.qcloud.tuikit.tuicallengine.impl.base.LiveData
 import com.tencent.qcloud.tuikit.tuicallkit.data.User
 import com.tencent.qcloud.tuikit.tuicallkit.state.TUICallState
@@ -13,18 +14,20 @@ class SingleCallVideoLayoutViewModel {
     public var currentReverseRenderView = false
     public var lastReverseRenderView = false
     public var isShowFullScreen = false
+    public var enableBlurBackground = LiveData<Boolean>()
 
     init {
         selfUser = TUICallState.instance.selfUser.get()
-        var remoteUserList = TUICallState.instance.remoteUserList.get()
-        if (remoteUserList != null && remoteUserList.size > 0) {
-            remoteUser = remoteUserList.first()
+        val remoteUserList = TUICallState.instance.remoteUserList.get()
+        remoteUser = if (remoteUserList != null && remoteUserList.size > 0) {
+            remoteUserList.first()
         } else {
-            remoteUser = User()
+            User()
         }
         isCameraOpen = TUICallState.instance.isCameraOpen
         isFrontCamera = TUICallState.instance.isFrontCamera
         lastReverseRenderView = TUICallState.instance.reverse1v1CallRenderView
+        enableBlurBackground = TUICallState.instance.enableBlurBackground
     }
 
     public fun reverseRenderLayout(reverse: Boolean) {
@@ -33,6 +36,9 @@ class SingleCallVideoLayoutViewModel {
     }
 
     public fun showFullScreen() {
+        if (TUICallState.instance.selfUser.get().callStatus.get() != TUICallDefine.Status.Accept) {
+            return
+        }
         isShowFullScreen = !isShowFullScreen
         TUICallState.instance.isShowFullScreen.set(isShowFullScreen)
     }

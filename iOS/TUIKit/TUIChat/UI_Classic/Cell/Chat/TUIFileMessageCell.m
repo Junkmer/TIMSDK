@@ -11,6 +11,7 @@
 #import <TUICore/TUIThemeManager.h>
 #import "ReactiveObjC/ReactiveObjC.h"
 #import "TUIMessageProgressManager.h"
+#import <TUICore/TUICore.h>
 
 @interface TUIFileMessageCell () <V2TIMSDKListener, TUIMessageProgressManagerDelegate>
 
@@ -28,6 +29,14 @@
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
+        _bubble = [[UIImageView alloc] initWithFrame:self.container.bounds];
+        [self.container addSubview:_bubble];
+        _bubble.hidden = YES;
+        _bubble.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+
+        self.securityStrikeView = [[TUISecurityStrikeView alloc] init];
+        [self.container addSubview:self.securityStrikeView];
+        
         [self.container addSubview:self.fileContainer];
         self.fileContainer.backgroundColor = TUIChatDynamicColor(@"chat_file_message_bg_color", @"#FFFFFF");
         [self.fileContainer addSubview:self.progressView];
@@ -50,7 +59,6 @@
         [self.fileContainer.layer insertSublayer:self.borderLayer atIndex:0];
         [self.fileContainer.layer setMask:self.maskLayer];
 
-        [self prepareReactTagUI:self.container];
         [V2TIMManager.sharedInstance addIMSDKListener:self];
         [TUIMessageProgressManager.shareManager addDelegate:self];
     }
@@ -65,7 +73,17 @@
     _length.text = [self formatLength:data.length];
     _image.image = [[TUIImageCache sharedInstance] getResourceFromCache:[self getImagePathByCurrentFileType:data.fileName.pathExtension]];
     @weakify(self);
-
+    [self prepareReactTagUI:self.container];
+    
+    self.securityStrikeView.hidden = YES;
+    BOOL hasRiskContent = self.messageData.innerMessage.hasRiskContent;
+    if (hasRiskContent) {
+        self.bubble.image =  [self getErrorBubble];
+        self.securityStrikeView.hidden = NO;
+        self.readReceiptLabel.hidden = YES;
+        self.retryView.hidden = NO;
+    }
+    
     dispatch_async(dispatch_get_main_queue(), ^{
       @strongify(self);
       NSInteger uploadProgress = [TUIMessageProgressManager.shareManager uploadProgressForMessage:self.fileData.msgID];
@@ -84,12 +102,20 @@
     });
 }
 
+- (UIImage *)getErrorBubble {
+    if (self.messageData.direction == MsgDirectionIncoming) {
+        return TUIBubbleMessageCell.incommingErrorBubble;
+    } else {
+        return TUIBubbleMessageCell.outgoingErrorBubble;
+    }
+}
+
 #pragma mark - TUIMessageProgressManagerDelegate
 - (void)onUploadProgress:(NSString *)msgID progress:(NSInteger)progress {
     if (![msgID isEqualToString:self.fileData.msgID]) {
         return;
     }
-
+    
     self.fileData.uploadProgress = progress;
     [self updateUploadProgress:(int)progress];
 }
@@ -147,7 +173,7 @@
 }
 - (NSString *)formatLength:(long)length {
     /**
-     * 默认显示文件大小
+     * 
      * Display file size by default
      */
     double len = length;
@@ -163,7 +189,7 @@
     NSString *str = [NSString stringWithFormat:@"%4.2f%@", len, array[factor]];
 
     /**
-     * 格式化显示字符
+     * 
      * Formatted display characters
      */
     if (self.fileData.direction == MsgDirectionOutgoing) {
@@ -196,30 +222,32 @@
 - (void)updateConstraints {
     [super updateConstraints];
     
+    
     CGSize containerSize = [self.class getContentSize:self.fileData];
+    CGSize fileContainerSize = [self.class getFileContentSize:self.fileData];
     [self.fileContainer mas_remakeConstraints:^(MASConstraintMaker *make) {
         make.center.mas_equalTo(self.container);
-        make.size.mas_equalTo(containerSize);
+        make.size.mas_equalTo(fileContainerSize);
     }];
     
-    CGFloat imageHeight = containerSize.height - 2 * TFileMessageCell_Margin;
+    CGFloat imageHeight = fileContainerSize.height - 2 * TFileMessageCell_Margin;
     CGFloat imageWidth = imageHeight;
     [self.image mas_remakeConstraints:^(MASConstraintMaker *make) {
-        make.leading.mas_equalTo(self.container.mas_leading).mas_offset(TFileMessageCell_Margin);
-        make.top.mas_equalTo(self.container.mas_top).mas_offset(TFileMessageCell_Margin);
+        make.leading.mas_equalTo(self.fileContainer.mas_leading).mas_offset(TFileMessageCell_Margin);
+        make.top.mas_equalTo(self.fileContainer.mas_top).mas_offset(TFileMessageCell_Margin);
         make.size.mas_equalTo(CGSizeMake(imageWidth, imageHeight));
     }];
 
-    CGFloat textWidth = containerSize.width - 2 * TFileMessageCell_Margin - imageWidth;
-    CGSize nameSize = [_fileName sizeThatFits:containerSize];
+    CGFloat textWidth = fileContainerSize.width - 2 * TFileMessageCell_Margin - imageWidth;
+    CGSize nameSize = [_fileName sizeThatFits:fileContainerSize];
 
     [self.fileName mas_remakeConstraints:^(MASConstraintMaker *make) {
         make.leading.mas_equalTo(self.image.mas_trailing).mas_offset(TFileMessageCell_Margin);
         make.top.mas_equalTo(self.image);
         make.size.mas_equalTo(CGSizeMake(textWidth, nameSize.height));
     }];
-
-    CGSize lengthSize = [_length sizeThatFits:containerSize];
+    
+    CGSize lengthSize = [_length sizeThatFits:fileContainerSize];
     [self.length mas_remakeConstraints:^(MASConstraintMaker *make) {
         make.leading.mas_equalTo(self.fileName);
         make.top.mas_equalTo(self.fileName.mas_bottom).mas_offset(TFileMessageCell_Margin * 0.5);
@@ -227,29 +255,17 @@
     }];
     
     
-    if (self.messageData.messageModifyReactsSize.height > 0) {
+    if (self.messageData.messageContainerAppendSize.height > 0) {
         [self.fileContainer mas_remakeConstraints:^(MASConstraintMaker *make) {
             make.center.mas_equalTo(self.container);
             make.size.mas_equalTo(self.container);
         }];
-        
-        if (self.tagView) {
-            [self.tagView mas_remakeConstraints:^(MASConstraintMaker *make) {
-                make.leading.mas_equalTo(self.container);
-                make.bottom.mas_equalTo(self.container);
-                make.width.mas_equalTo(self.container);
-                make.height.mas_equalTo(self.messageData.messageModifyReactsSize.height);
-            }];
-        }
-        
         self.bubble.hidden = NO;
-    } else {
-        self.bubble.hidden = YES;
     }
-
+    
     self.maskLayer.frame = self.fileContainer.bounds;
     self.borderLayer.frame = self.fileContainer.bounds;
-
+    
     UIRectCorner corner = UIRectCornerBottomLeft | UIRectCornerBottomRight | UIRectCornerTopLeft;
     if (self.fileData.direction == MsgDirectionIncoming) {
         corner = UIRectCornerBottomLeft | UIRectCornerBottomRight | UIRectCornerTopRight;
@@ -257,6 +273,30 @@
     UIBezierPath *bezierPath = [UIBezierPath bezierPathWithRoundedRect:self.fileContainer.bounds byRoundingCorners:corner cornerRadii:CGSizeMake(10, 10)];
     self.maskLayer.path = bezierPath.CGPath;
     self.borderLayer.path = bezierPath.CGPath;
+    
+    BOOL hasRiskContent = self.messageData.innerMessage.hasRiskContent;
+    if (hasRiskContent ) {
+
+        [self.fileContainer mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.mas_equalTo(self.container).mas_offset(13);
+            make.leading.mas_equalTo(12);
+            make.size.mas_equalTo(fileContainerSize);
+        }];
+        [self.bubble mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.leading.mas_equalTo(0);
+            make.size.mas_equalTo(self.container);
+            make.top.mas_equalTo(self.container);
+        }];
+        [self.securityStrikeView mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.top.mas_equalTo(self.fileContainer.mas_bottom);
+            make.width.mas_equalTo(self.container);
+            make.bottom.mas_equalTo(self.container).mas_offset(-self.messageData.messageContainerAppendSize.height);
+        }];
+        self.bubble.hidden = NO;
+    }
+    else {
+        self.bubble.hidden = YES;
+    }
     
     [self.progressView mas_remakeConstraints:^(MASConstraintMaker *make) {
         make.leading.mas_equalTo(0);
@@ -354,9 +394,32 @@
     return _animateHighlightView;
 }
 
+- (void)prepareReactTagUI:(UIView *)containerView {
+    NSDictionary *param = @{TUICore_TUIChatExtension_ChatMessageReactPreview_Delegate: self};
+    [TUICore raiseExtension:TUICore_TUIChatExtension_ChatMessageReactPreview_ClassicExtensionID parentView:containerView param:param];
+}
+
 #pragma mark - TUIMessageCellProtocol
-+ (CGSize)getContentSize:(TUIMessageCellData *)data {
++ (CGSize)getFileContentSize:(TUIMessageCellData *)data {
+    BOOL hasRiskContent = data.innerMessage.hasRiskContent;
+    if (hasRiskContent) {
+        return CGSizeMake(237, 62);
+    }
     return TFileMessageCell_Container_Size;
+}
++ (CGSize)getContentSize:(TUIMessageCellData *)data {
+    CGSize size = [self.class getFileContentSize:data];
+    BOOL hasRiskContent = data.innerMessage.hasRiskContent;
+    if (hasRiskContent) {
+        CGFloat bubbleTopMargin = 12;
+        CGFloat bubbleBottomMargin = 12;
+        size.width = MAX(size.width, 261);// width must more than  TIMCommonLocalizableString(TUIKitMessageTypeSecurityStrike)
+        size.height += bubbleTopMargin;
+        size.height += kTUISecurityStrikeViewTopLineMargin;
+        size.height += kTUISecurityStrikeViewTopLineToBottom;
+        size.height += bubbleBottomMargin;
+    }
+    return size;
 }
 
 @end

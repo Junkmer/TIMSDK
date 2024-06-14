@@ -20,6 +20,8 @@ import androidx.fragment.app.DialogFragment;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.tencent.qcloud.tuicore.TUIConfig;
+import com.tencent.qcloud.tuicore.TUILogin;
+import com.tencent.qcloud.tuicore.interfaces.TUICallback;
 import com.tencent.qcloud.tuicore.util.ToastUtil;
 import com.tencent.qcloud.tuikit.timcommon.component.MinimalistLineControllerView;
 import com.tencent.qcloud.tuikit.timcommon.component.PopupInputCard;
@@ -39,7 +41,6 @@ import com.tencent.qcloud.tuikit.tuicontact.presenter.FriendProfilePresenter;
 public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implements IAddMoreActivity {
     private BottomSheetDialog dialog;
 
-    private TextView idLabel;
     private View detailArea;
 
     private ShadeImageView faceImgView;
@@ -56,6 +57,7 @@ public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implem
     private MinimalistLineControllerView groupController;
     private TextView sendButton;
 
+    private TUICallback addMoreCallback;
     private Object data;
     private FriendProfilePresenter presenter;
 
@@ -94,7 +96,6 @@ public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implem
             }
         });
 
-        idLabel = view.findViewById(R.id.id_label);
         detailArea = view.findViewById(R.id.friend_detail_area);
 
         remarksArea = view.findViewById(R.id.remark_area);
@@ -126,11 +127,13 @@ public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implem
                         public void onSuccess(Void data) {
                             ToastUtil.toastShortMessage(getContext().getString(R.string.success));
                             dismiss();
+                            TUICallback.onSuccess(addMoreCallback);
                         }
 
                         @Override
                         public void onError(String module, int errCode, String errMsg) {
                             ToastUtil.toastShortMessage(getContext().getString(R.string.contact_add_failed) + " " + errMsg);
+                            TUICallback.onError(addMoreCallback, errCode, errMsg);
                         }
                     });
                 } else if (data instanceof ContactItemBean) {
@@ -146,11 +149,13 @@ public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implem
                             }
                             ContactToast.showToast(getContext(), data.second, toastIconType);
                             dismiss();
+                            TUICallback.onSuccess(addMoreCallback);
                         }
 
                         @Override
                         public void onError(String module, int errCode, String errMsg) {
                             ContactToast.showToast(getContext(), getContext().getString(R.string.contact_add_failed), ContactToast.TOAST_ICON_NEGATIVE);
+                            TUICallback.onError(addMoreCallback, errCode, errMsg);
                         }
                     });
                 }
@@ -162,7 +167,11 @@ public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implem
         } else if (data instanceof ContactItemBean) {
             setFriendDetail(((ContactItemBean) data).getAvatarUrl(), ((ContactItemBean) data).getId(), ((ContactItemBean) data).getNickName());
         }
-        validationEdit.setText(getString(R.string.contact_add_friend_default_validation, TUIConfig.getSelfNickName()));
+        String nickName = TUIConfig.getSelfNickName();
+        if (TextUtils.isEmpty(nickName)) {
+            nickName = TUILogin.getLoginUser();
+        }
+        validationEdit.setText(getString(R.string.contact_add_friend_default_validation, nickName));
         return view;
     }
 
@@ -196,8 +205,12 @@ public class AddMoreDetailMinimalistDialogFragment extends DialogFragment implem
         this.data = data;
     }
 
+    public void setAddMoreCallback(TUICallback addMoreCallback) {
+        this.addMoreCallback = addMoreCallback;
+    }
+
     @Override
     public void finish() {
-        dialog.dismiss();
+        dismiss();
     }
 }

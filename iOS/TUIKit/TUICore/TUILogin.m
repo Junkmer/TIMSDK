@@ -8,6 +8,8 @@
 
 @import ImSDK_Plus;
 
+NSString *const TUIInitSdkSuccessNotification = @"TUIInitSdkSuccessNotification";
+NSString *const TUIInitSdkFailNotification = @"TUIInitSdkFailNotification";
 NSString *const TUILoginSuccessNotification = @"TUILoginSuccessNotification";
 NSString *const TUILoginFailNotification = @"TUILoginFailNotification";
 NSString *const TUILogoutSuccessNotification = @"TUILogoutSuccessNotification";
@@ -138,7 +140,12 @@ NSString *const TUILogoutFailNotification = @"TUILogoutFailNotification";
     self.sdkAppID = sdkAppID;
     V2TIMSDKConfig *config = [[V2TIMSDKConfig alloc] init];
     config.logLevel = V2TIM_LOG_INFO;
-    [[V2TIMManager sharedInstance] initSDK:sdkAppID config:config listener:nil];
+
+    if ([[V2TIMManager sharedInstance] initSDK:sdkAppID config:config listener:nil]) {
+        [NSNotificationCenter.defaultCenter postNotificationName:TUIInitSdkSuccessNotification object:nil];
+    } else {
+        [NSNotificationCenter.defaultCenter postNotificationName:TUIInitSdkFailNotification object:nil];
+    }
 }
 
 - (void)login:(NSString *)userID userSig:(NSString *)userSig succ:(TSucc)succ fail:(TFail)fail {
@@ -192,7 +199,11 @@ NSString *const TUILogoutFailNotification = @"TUILogoutFailNotification";
         sdkConfig.logLevel = V2TIM_LOG_INFO;
     }
 
-    [[V2TIMManager sharedInstance] initSDK:sdkAppID config:sdkConfig];
+    if ([[V2TIMManager sharedInstance] initSDK:sdkAppID config:sdkConfig]) {
+        [NSNotificationCenter.defaultCenter postNotificationName:TUIInitSdkSuccessNotification object:nil];
+    } else {
+        [NSNotificationCenter.defaultCenter postNotificationName:TUIInitSdkFailNotification object:nil];
+    }
 
     [V2TIMManager.sharedInstance addIMSDKListener:self];
 
@@ -249,7 +260,6 @@ NSString *const TUILogoutFailNotification = @"TUILogoutFailNotification";
               succ();
           }
           if (self.loginWithInit) {
-              // 使用的是新接口登录，退出时需要反初始化，并移除监听
               // The new interface is currently used to log in. When logging out, you need to deinitialize and remove the listener.
               [V2TIMManager.sharedInstance removeIMSDKListener:self];
               [V2TIMManager.sharedInstance unInitSDK];

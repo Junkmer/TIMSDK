@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIContact'
-  spec.version      = '7.7.5282'
+  spec.version      = '8.0.5895'
   spec.platform     = :ios 
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',
@@ -17,10 +17,12 @@ Pod::Spec.new do |spec|
   spec.dependency 'ReactiveObjC'
   spec.requires_arc = true
 
-  spec.source = { :path => './' }
+  spec.source = { :git => './'}
   spec.source_files = '**/*.{h,m,mm,c}'
   
-  spec.resource = [
-  'Resources/*.bundle'
-  ]
+  spec.resource = ['Resources/*.bundle']
+  
+  spec.resource_bundle = {
+    "#{spec.module_name}_Privacy" => 'Resources/PrivacyInfo.xcprivacy'
+  }
 end

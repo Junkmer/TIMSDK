@@ -1,7 +1,9 @@
 package com.tencent.cloud.tuikit.roomkit.view.component;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,11 +15,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 
 import com.tencent.cloud.tuikit.roomkit.R;
 
 public class BaseDialogFragment extends DialogFragment {
+    private static final String TAG = "BaseDialogFragment";
 
     private View mRootView;
 
@@ -25,6 +29,8 @@ public class BaseDialogFragment extends DialogFragment {
     private String mContent;
     private String mNegativeName;
     private String mPositiveName;
+
+    private boolean mIsHideNegativeView;
 
     private ClickListener mNegativeListener;
     private ClickListener mPositiveListener;
@@ -68,11 +74,20 @@ public class BaseDialogFragment extends DialogFragment {
         return this;
     }
 
-    public void showDialog(@NonNull FragmentManager manager, @Nullable String tag) {
+    public BaseDialogFragment hideNegativeView() {
+        mIsHideNegativeView = true;
+        return this;
+    }
+
+    public void showDialog(@NonNull Context context, @Nullable String tag) {
+        if (!(context instanceof FragmentActivity)) {
+            Log.e(TAG, "context is not instance of FragmentActivity");
+            return;
+        }
+        FragmentManager manager = ((FragmentActivity) context).getSupportFragmentManager();
         Fragment fragment = manager.findFragmentByTag(tag);
         if (fragment != null && fragment instanceof DialogFragment) {
-            DialogFragment dialogFragment = (DialogFragment) fragment;
-            dialogFragment.dismissAllowingStateLoss();
+            return;
         }
         setCancelable(false);
         this.show(manager, tag);
@@ -101,19 +116,23 @@ public class BaseDialogFragment extends DialogFragment {
         }
 
         Button btnNegative = mRootView.findViewById(R.id.tuiroomkit_btn_dialog_negative);
-        if (!TextUtils.isEmpty(mNegativeName)) {
-            btnNegative.setText(mNegativeName);
-        }
-        btnNegative.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                btnNegative.setClickable(false);
-                if (mNegativeListener != null) {
-                    mNegativeListener.onClick();
-                }
-                dismissAllowingStateLoss();
+        if (mIsHideNegativeView) {
+            btnNegative.setVisibility(View.GONE);
+        } else {
+            if (!TextUtils.isEmpty(mNegativeName)) {
+                btnNegative.setText(mNegativeName);
             }
-        });
+            btnNegative.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    btnNegative.setClickable(false);
+                    if (mNegativeListener != null) {
+                        mNegativeListener.onClick();
+                    }
+                    dismissAllowingStateLoss();
+                }
+            });
+        }
 
         Button btnPositive = mRootView.findViewById(R.id.tuiroomkit_btn_dialog_positive);
         if (!TextUtils.isEmpty(mPositiveName)) {

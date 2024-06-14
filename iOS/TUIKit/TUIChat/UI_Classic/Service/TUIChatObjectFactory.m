@@ -58,7 +58,23 @@
     NSString *isEnableRoomInfoStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_Room asClass:NSString.class];
     NSString *isLimitedPortraitOrientationStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Limit_Portrait_Orientation
                                                                 asClass: NSString.class];
+    NSString *isEnablePollInfoStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_Poll 
+                                                    asClass:NSString.class];
+    NSString *isEnableGroupNoteInfoStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_GroupNote asClass:NSString.class];
+    NSString *isEnableWelcomeCustomMessage = [param tui_objectForKey:
+                                              TUICore_TUIChatObjectFactory_ChatViewController_Enable_WelcomeCustomMessage 
+                                                             asClass:NSString.class];
 
+    NSString *isEnableTakePhotoStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_TakePhoto asClass:NSString.class];
+
+    NSString *isEnableRecordVideoStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_RecordVideo asClass:NSString.class];
+    
+    NSString *isEnableFileStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_File
+                                                asClass:NSString.class];
+    NSString *isEnableAlbumStr = [param tui_objectForKey:TUICore_TUIChatObjectFactory_ChatViewController_Enable_Album 
+                                                 asClass:NSString.class];
+    
+    
     TUIChatConversationModel *conversationModel = [[TUIChatConversationModel alloc] init];
     conversationModel.title = title;
     conversationModel.userID = userID;
@@ -84,6 +100,35 @@
     if ([isLimitedPortraitOrientationStr isEqualToString:@"1"]) {
         conversationModel.isLimitedPortraitOrientation = YES;
     }
+    
+    if ([isEnableWelcomeCustomMessage isEqualToString:@"0"]) {
+        conversationModel.enableWelcomeCustomMessage = NO;
+    }
+    
+    if ([isEnablePollInfoStr isEqualToString:@"0"]) {
+        conversationModel.enablePoll = NO;
+    }
+    
+    if ([isEnableGroupNoteInfoStr isEqualToString:@"0"]) {
+        conversationModel.enableGroupNote = NO;
+    }
+    
+    if ([isEnableTakePhotoStr isEqualToString:@"0"]) {
+        conversationModel.enableTakePhoto = NO;
+    }
+
+    if ([isEnableRecordVideoStr isEqualToString:@"0"]) {
+        conversationModel.enableRecordVideo = NO;
+    }
+    
+    if ([isEnableFileStr isEqualToString:@"0"]) {
+        conversationModel.enableFile = NO;
+    }
+    
+    if ([isEnableAlbumStr isEqualToString:@"0"]) {
+        conversationModel.enableAlbum = NO;
+    }
+    
     
     TUIBaseChatViewController *chatVC = nil;
     if (conversationModel.groupID.length > 0) {

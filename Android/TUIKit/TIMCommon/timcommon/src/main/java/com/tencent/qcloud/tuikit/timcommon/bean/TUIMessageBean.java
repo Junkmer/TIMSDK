@@ -10,53 +10,46 @@ import com.tencent.qcloud.tuikit.timcommon.util.MessageBuilder;
 import com.tencent.qcloud.tuikit.timcommon.util.MessageParser;
 import com.tencent.qcloud.tuikit.timcommon.util.TIMCommonConstants;
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public abstract class TUIMessageBean implements Serializable {
     /**
-     * 消息正常状态
      *
      * message normal
      */
     public static final int MSG_STATUS_NORMAL = 0;
     /**
-     * 消息发送中状态
      *
      * message sending
      */
     public static final int MSG_STATUS_SENDING = V2TIMMessage.V2TIM_MSG_STATUS_SENDING;
     /**
-     * 消息发送成功状态
      *
      * message send success
      */
     public static final int MSG_STATUS_SEND_SUCCESS = V2TIMMessage.V2TIM_MSG_STATUS_SEND_SUCC;
     /**
-     * 消息发送失败状态
      *
      * message send failed
      */
     public static final int MSG_STATUS_SEND_FAIL = V2TIMMessage.V2TIM_MSG_STATUS_SEND_FAIL;
 
     /**
-     * 消息撤回状态
      *
      * messaage revoked
      */
     public static final int MSG_STATUS_REVOKE = V2TIMMessage.V2TIM_MSG_STATUS_LOCAL_REVOKED;
 
     /**
-     * 消息来源未知
      */
     public static final int MSG_SOURCE_UNKNOWN = 0;
 
-    /**
-     * 后台主动 push 的消息
-     */
     public static final int MSG_SOURCE_ONLINE_PUSH = 1;
 
-    /**
-     * SDK 拉取的历史消息
-     */
     public static final int MSG_SOURCE_GET_HISTORY = 2;
 
     private V2TIMMessage v2TIMMessage;
@@ -72,6 +65,10 @@ public abstract class TUIMessageBean implements Serializable {
     private UserBean revoker;
     private boolean hasRiskContent = false;
     private int messageSource = 0;
+    private MessageReceiptInfo messageReceiptInfo;
+    private MessageRepliesBean messageRepliesBean;
+    private boolean hasReaction = false;
+    private Map<String, UserBean> userBeanMap = new LinkedHashMap<>();
 
     public void setExcludeFromHistory(boolean excludeFromHistory) {
         this.excludeFromHistory = excludeFromHistory;
@@ -97,21 +94,8 @@ public abstract class TUIMessageBean implements Serializable {
         isEnableForward = enableForward;
     }
 
-    private MessageReceiptInfo messageReceiptInfo;
-    private MessageRepliesBean messageRepliesBean;
-    private MessageReactBean messageReactBean;
-
-    public MessageReactBean getMessageReactBean() {
-        return messageReactBean;
-    }
-
     public MessageRepliesBean getMessageRepliesBean() {
         return messageRepliesBean;
-    }
-
-    public void setMessageReactBean(MessageReactBean messageReactBean) {
-        this.messageReactBean = messageReactBean;
-        MessageBuilder.mergeCloudCustomData(this, TIMCommonConstants.MESSAGE_REACT_KEY, messageReactBean);
     }
 
     public void setMessageRepliesBean(MessageRepliesBean messageRepliesBean) {
@@ -170,7 +154,6 @@ public abstract class TUIMessageBean implements Serializable {
             }
         }
 
-        messageReactBean = MessageParser.parseMessageReact(this);
         messageRepliesBean = MessageParser.parseMessageReplies(this);
     }
 
@@ -194,7 +177,6 @@ public abstract class TUIMessageBean implements Serializable {
     }
 
     /**
-     * 获取要显示在会话列表的消息摘要
      *
      * Get a summary of messages to display in the conversation list
      * @return
@@ -418,6 +400,51 @@ public abstract class TUIMessageBean implements Serializable {
     }
 
     public boolean customReloadWithNewMsg(V2TIMMessage v2TIMMessage) {
+        return false;
+    }
+
+    public boolean isHasReaction() {
+        return hasReaction;
+    }
+
+    public void setHasReaction(boolean hasReaction) {
+        this.hasReaction = hasReaction;
+    }
+
+    public boolean isRevoked() {
+        return getStatus() == TUIMessageBean.MSG_STATUS_REVOKE;
+    }
+
+    public void setUserBean(String userID, UserBean userBean) {
+        userBeanMap.put(userID, userBean);
+        List<MessageRepliesBean.ReplyBean> replyBeanList = messageRepliesBean.getReplies();
+        if (replyBeanList != null && !replyBeanList.isEmpty()) {
+            for (MessageRepliesBean.ReplyBean replyBean : replyBeanList) {
+                if (userBean != null) {
+                    replyBean.setSenderFaceUrl(userBean.getFaceUrl());
+                    replyBean.setSenderShowName(userBean.getDisplayString());
+                }
+            }
+        }
+    }
+
+    public UserBean getUserBean(String userID) {
+        return userBeanMap.get(userID);
+    }
+
+    public Set<String> getAdditionalUserIDList() {
+        Set<String> userIdSet = new HashSet<>();
+        MessageRepliesBean messageRepliesBean = getMessageRepliesBean();
+        if (messageRepliesBean != null && messageRepliesBean.getRepliesSize() > 0) {
+            List<MessageRepliesBean.ReplyBean> replyBeanList = messageRepliesBean.getReplies();
+            for (MessageRepliesBean.ReplyBean replyBean : replyBeanList) {
+                userIdSet.add(replyBean.getMessageSender());
+            }
+        }
+        return userIdSet;
+    }
+
+    public boolean needAsyncGetDisplayString() {
         return false;
     }
 

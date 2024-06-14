@@ -3,7 +3,7 @@
 //  TUIContact
 //
 //  Created by lynxzhang on 2018/10/19.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 #import "TUISettingController_Minimalist.h"
 #import <TIMCommon/TIMCommonModel.h>
@@ -71,6 +71,9 @@ static NSString *const kKeyViews = @"views";  // Used to pass custom views from 
 
     [[V2TIMManager sharedInstance] addIMSDKListener:self];
     NSString *loginUser = [[V2TIMManager sharedInstance] getLoginUser];
+    if (!loginUser) {
+        loginUser = self.lastLoginUser;
+    }
     if (loginUser.length > 0) {
         @weakify(self);
         [[V2TIMManager sharedInstance] getUsersInfo:@[ loginUser ]

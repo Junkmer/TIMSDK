@@ -26,11 +26,14 @@
 @property(nonatomic, assign, getter=isLastPage) BOOL lastPage;
 
 /**
- * 本地插入的会话折叠列表
  * Locally inserted conversation collapse list
  */
 @property(nonatomic, strong) TUIConversationCellData *conversationFoldListData;
 
+/**
+ *  Deleting conversation list
+ */
+@property(nonatomic, strong) NSMutableArray *deletingConversationList;
 @end
 
 @implementation TUIConversationListBaseDataProvider
@@ -41,6 +44,7 @@
         self.pageSize = kPageSize;
         self.lastPage = NO;
         self.filter = [[V2TIMConversationListFilter alloc] init];
+        self.deletingConversationList = [NSMutableArray array];
 
         [[V2TIMManager sharedInstance] addConversationListener:self];
         [[V2TIMManager sharedInstance] addGroupListener:self];
@@ -196,7 +200,7 @@
             [addedDataList addObject:cellData];
         }
         if ([self.markUnreadMap objectForKey:cellData.conversationID]) {
-            // 这是一个取消未读标记操作 或 被别人发来的新消息冲掉了标记的操作
+            //   
             // This is an operation to cancel the unread mark operation or to be cleaned away by a new message from someone else
             if (![TUIConversationCellData isMarkedByUnReadType:conv.markList]) {
                 [self.markUnreadMap removeObjectForKey:cellData.conversationID];
@@ -260,7 +264,10 @@
     [self updateMarkUnreadCount];
 
     [self updateMarkFold:markFoldDataList];
+  
+    [self asnycGetLastMessageDisplay:duplicateDataList addedDataList:addedDataList];
 }
+
 - (void)updateMardHide:(NSMutableArray *) markHideDataList {
     if (markHideDataList.count) {
         [self sortDataList:markHideDataList];
@@ -282,6 +289,7 @@
         }
     }
 }
+
 - (void)updateMarkUnreadCount {
     __block NSInteger markUnreadCount = 0;
     [self.markUnreadMap enumerateKeysAndObjectsUsingBlock:^(NSString *_Nonnull key, TUIConversationCellData *_Nonnull obj, BOOL *_Nonnull stop) {
@@ -313,6 +321,7 @@
                         TUIKitNotification_onConversationMarkUnreadCountChanged_MarkUnreadMap : self.markUnreadMap,
                     }];
 }
+
 - (void)updateMarkFold:(NSMutableArray *) markFoldDataList {
     if (markFoldDataList.count) {
         [self sortDataList:markFoldDataList];
@@ -329,12 +338,15 @@
                 [pRemoveCellUIList addObject:item];
             }
         }
-        // 如果有被折叠的会话出现在首页会话列表，则需要隐藏，注意不能删除历史记录
         // If a collapsed session appears in the home page List, it needs to be hidden. Note that the history cannot be deleted.
         for (TUIConversationCellData *item in pRemoveCellUIList) {
             [self handleHideConversation:item];
         }
     }
+}
+
+- (void)asnycGetLastMessageDisplay:(NSArray<TUIConversationCellData *> *)duplicateDataList addedDataList:(NSArray<TUIConversationCellData *> *)addedDataList {
+  // override by subclass
 }
 
 - (void)handleInsertConversationList:(NSArray<TUIConversationCellData *> *)conversationList {
@@ -412,13 +424,21 @@
         if (self.delegate && [self.delegate respondsToSelector:@selector(deleteConversationAtIndexPaths:)]) {
             [self.delegate deleteConversationAtIndexPaths:@[ [NSIndexPath indexPathForRow:index inSection:0] ]];
         }
-        @weakify(self);
-        [[V2TIMManager sharedInstance] deleteConversation:conversation.conversationID
-                                                     succ:^{
-                                                       @strongify(self);
-                                                       [self updateMarkUnreadCount];
-                                                     }
-                                                     fail:nil];
+
+        [self.deletingConversationList addObject:conversation.conversationID];
+        @weakify(self)
+        [[V2TIMManager sharedInstance] deleteConversation:conversation.conversationID succ:^{
+            @strongify(self)
+            [self.deletingConversationList removeObject:conversation.conversationID];
+            if ([self.markUnreadMap objectForKey:conversation.conversationID]) {
+               [self.markUnreadMap removeObjectForKey:conversation.conversationID];
+            }
+            [self updateMarkUnreadCount];
+        } fail:^(int code, NSString *desc) {
+            @strongify(self)
+            NSLog(@"deleteConversation failed, conversationID:%@ code:%d desc:%@", conversation.conversationID, code, desc);
+            [self.deletingConversationList removeObject:conversation.conversationID];
+        }];
     }
 }
 
@@ -657,19 +677,42 @@
     NSArray *cacheConversationList = [self.conversationList copy];
     for (TUIConversationCellData *item in cacheConversationList) {
         if ([conversationIDList containsObject:item.conversationID]) {
-            [self removeConversation:item];
+            NSInteger index = [self.conversationList indexOfObject:item];
+            if (index != NSNotFound) {
+                [self.conversationList removeObject:item];
+                if (self.delegate && [self.delegate respondsToSelector:@selector(deleteConversationAtIndexPaths:)]) {
+                    [self.delegate deleteConversationAtIndexPaths:@[ [NSIndexPath indexPathForRow:index inSection:0] ]];
+                }
+                if ([self.markUnreadMap objectForKey:item.conversationID]) {
+                   [self.markUnreadMap removeObjectForKey:item.conversationID];
+                }
+                [self updateMarkUnreadCount];
+            }
         }
     }
 }
 
 #pragma mark - V2TIMGroupListener
+- (NSString *)getGroupName:(TUIConversationCellData *)cellData {
+    NSString *formatString = cellData.groupID;
+    if (cellData.title.length > 0) {
+        return cellData.title;
+    }
+    else if (cellData.groupID.length > 0) {
+        return cellData.groupID;
+    }
+    return @"";
+}
+
 - (void)onGroupDismissed:(NSString *)groupID opUser:(V2TIMGroupMemberInfo *)opUser {
     TUIConversationCellData *data = [self cellDataOfGroupID:groupID];
     if (data == nil) {
         [self dealFoldcellDataOfGroupID:groupID];
         return;
     }
-    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupDismssTipsFormat), data.groupID]];
+    
+    NSString *groupName = [self getGroupName:data];
+    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupDismssTipsFormat), groupName]];
     [self handleRemoveConversation:data];
 }
 
@@ -679,7 +722,9 @@
         [self dealFoldcellDataOfGroupID:groupID];
         return;
     }
-    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupRecycledTipsFormat), data.groupID]];
+    NSString *groupName = [self getGroupName:data];
+
+    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupRecycledTipsFormat), groupName]];
     [self handleRemoveConversation:data];
 }
 
@@ -701,7 +746,8 @@
         return;
     }
 
-    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupKickOffTipsFormat), data.groupID]];
+    NSString *groupName = [self getGroupName:data];
+    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupKickOffTipsFormat), groupName]];
     [self handleRemoveConversation:data];
 }
 
@@ -711,7 +757,8 @@
         [self dealFoldcellDataOfGroupID:groupID];
         return;
     }
-    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupDropoutTipsFormat), data.groupID]];
+    NSString *groupName = [self getGroupName:data];
+    [TUITool makeToast:[NSString stringWithFormat:TIMCommonLocalizableString(TUIKitGroupDropoutTipsFormat), groupName]];
     [self handleRemoveConversation:data];
 }
 
@@ -739,10 +786,8 @@
 #pragma mark - V2TIMAdvancedMsgListener
 
 - (void)onRecvNewMessage:(V2TIMMessage *)msg {
-    // 如果会话里是被隐藏的会话，则需要先清理被隐藏标记
     // when a new message is received, if the conversation is a hidden conversation, you need to clear the hidden mark first
     
-    // 如果会话里被标记未读，则需要清理标记
     // when a new message is received, if the conversation is marked unread, you need to clear the mark
     
     NSString *userID = msg.userID;
@@ -890,6 +935,7 @@
         data.isMarkAsHide = [TUIConversationCellData isMarkedByHideType:conversation.markList];
         data.isMarkAsFolded = [TUIConversationCellData isMarkedByFoldType:conversation.markList];
         data.lastMessage = conversation.lastMessage;
+        data.innerConversation = conversation;
         data.conversationGroupList = conversation.conversationGroupList;
         data.conversationMarkList = conversation.markList;
         return data;
@@ -912,7 +958,6 @@
     NSString *lastMsgStr = @"";
 
     /**
-     * 先看下外部有没自定义会话的 lastMsg 展示信息
      * Attempt to get externally customized display information
      */
     if (self.delegate && [self.delegate respondsToSelector:@selector(getConversationDisplayString:)]) {
@@ -920,7 +965,6 @@
     }
 
     /**
-     * 外部没有自定义，通过消息获取 lastMsg 展示信息
      * If there is no external customization, get the lastMsg display information through the message module
      */
     if (lastMsgStr.length == 0 && conversation.lastMessage) {
@@ -928,7 +972,6 @@
     }
 
     /**
-     * 如果没有 lastMsg 展示信息，也没有草稿信息，直接返回 nil
      * If there is no lastMsg display information and no draft information, return nil directly
      */
     if (lastMsgStr.length == 0) {
@@ -1018,7 +1061,8 @@
 }
 
 - (BOOL)filteConversation:(V2TIMConversation *)conversation {
-    if (conversation.conversationID.length == 0) {
+    if (conversation.conversationID.length == 0 ||
+        [self.deletingConversationList containsObject:conversation.conversationID]) {
         return YES;
     }
 
@@ -1037,9 +1081,6 @@
     if ([self getLastDisplayDate:conversation] == nil) {
         if (conversation.unreadCount != 0) {
             /**
-             * 修复 在某种情况下会出现data.time为nil且还有未读会话的情况
-             * 如果碰到这种情况，直接设置成已读
-             *
              * In some case, the time of unread conversation will be nil.
              * If this happens, directly mark the conversation as read.
              */
@@ -1079,12 +1120,12 @@
     if (!param || ![param isKindOfClass:[NSDictionary class]]) {
         return NO;
     }
-    // 普通会话对端正在输入
+    // Normal session peer is typing
     NSString *businessID = param[BussinessID];
     if (businessID && [businessID isKindOfClass:[NSString class]] && [businessID isEqualToString:BussinessID_Typing]) {
         return YES;
     }
-    // 客服会话对端正在输入
+    // The customer service session peer is typing
     if ([param.allKeys containsObject:BussinessID_CustomerService]) {
         NSString *src = param[BussinessID_Src_CustomerService];
         if (src && [src isKindOfClass:[NSString class]] && [src isEqualToString:BussinessID_Src_CustomerService_Typing]) {

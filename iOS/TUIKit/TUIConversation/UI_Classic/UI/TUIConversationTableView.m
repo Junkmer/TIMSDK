@@ -252,8 +252,8 @@
                                                                             TUISecondConfirmBtnInfo *confirmBtnInfo = [[TUISecondConfirmBtnInfo alloc] init];
                                                                             confirmBtnInfo.tile = TIMCommonLocalizableString(Delete);
                                                                             confirmBtnInfo.click = ^{
-                                                                              self.editing = NO;
                                                                               [self.dataProvider removeConversation:cellData];
+                                                                              self.editing = NO;
                                                                             };
                                                                             [TUISecondConfirm show:TIMCommonLocalizableString(TUIKitConversationTipsDelete)
                                                                                      cancelBtnInfo:cancelBtnInfo
@@ -359,8 +359,8 @@
                             TUISecondConfirmBtnInfo *confirmBtnInfo = [[TUISecondConfirmBtnInfo alloc] init];
                             confirmBtnInfo.tile = TIMCommonLocalizableString(Delete);
                             confirmBtnInfo.click = ^{
-                              self.editing = NO;
                               [self.dataProvider removeConversation:cellData];
+                              self.editing = NO;
                             };
                             [TUISecondConfirm show:TIMCommonLocalizableString(TUIKitConversationTipsDelete)
                                      cancelBtnInfo:cancelBtnInfo
@@ -515,7 +515,6 @@
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    // 通过开启或关闭这个开关，控制最后一行分割线的长度
     // Turn on or off the length of the last line of dividers by controlling this switch
     BOOL needLastLineFromZeroToMax = NO;
     if ([cell respondsToSelector:@selector(setSeparatorInset:)]) {

@@ -222,8 +222,7 @@ public class VideoMessageHolder extends MessageContentHolder {
                 }
             }
         });
-
-        if (msg.getMessageReactBean() == null || msg.getMessageReactBean().getReactSize() <= 0) {
+        if (!msg.isHasReaction()) {
             setMessageBubbleBackground(null);
             setMessageBubbleZeroPadding();
         }

@@ -1,0 +1,12 @@
+{
+  devDependencies: {
+    pako: "^2.1.0",
+    "@ohos/crypto-js": "^2.0.1",
+  },
+  name: "entry",
+  description: "Demo for Tencent IM SDK",
+  version: "7.7.5294",
+  dependencies: {
+    "@tencentcloud/imsdk": "file:./imsdk-ohos-8.0.5895.har",
+  },
+}

@@ -9,6 +9,7 @@
 #import "TUIMergeMessageCellData.h"
 #import <TIMCommon/TIMDefine.h>
 #import "TUITextMessageCellData.h"
+#import <TIMCommon/NSString+TUIEmoji.h>
 
 @implementation TUIMergeMessageCellData
 
@@ -82,14 +83,14 @@
         }
         NSString *str = ab;
         NSString * splitStr = @":";
-        if ([str containsString:@"\u202C:"]) {
+        if ([str tui_containsString:@"\u202C:"]) {
             splitStr = @"\u202C:";
         }
         NSArray<NSString *> *result =  [str componentsSeparatedByString:splitStr];
         NSString *sender = result[0];
         NSString *detail = result[1];
         sender =  [NSString stringWithFormat:@"%@",sender];
-        detail =  [NSString stringWithFormat:@"%@",detail];
+        detail =  [NSString stringWithFormat:@"%@",detail.getLocalizableStringWithFaceContent];
         NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithCapacity:3];
         if(sender.length>0 ){
             NSMutableAttributedString *abstr = [[NSMutableAttributedString alloc] initWithString:@""];

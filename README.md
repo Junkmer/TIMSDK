@@ -38,7 +38,7 @@ Tencent Cloud branch download address: [Download](https://im.sdk.qcloud.com/down
 <td style="text-align:center">Android  </td>
 <td style="text-align:center" ><a href="https://github.com/tencentyun/TIMSDK/tree/master/Android/IMSDK">GitHub (Recommended)</a></td>
 <td style="text-align:left" ><a href="https://www.tencentcloud.com/document/product/1047/50057">[Quick Integration] TUIKit Integration (Android)</a><br><a href="https://www.tencentcloud.com/document/product/1047/34306">[General Integration] SDK Integration (Android)</a></td>
-<td style="text-align:center" rowspan='4'><a href="https://intl.cloud.tencent.com/document/product/1047/34282">Update Log (Native)</a> </td>
+<td style="text-align:center" rowspan='5'><a href="https://intl.cloud.tencent.com/document/product/1047/34282">Update Log (Native)</a> </td>
 </tr>
 <tr>
 <td style="text-align:center">iOS  </td>
@@ -54,6 +54,11 @@ Tencent Cloud branch download address: [Download](https://im.sdk.qcloud.com/down
 <td style="text-align:center">Windows  </td>
 <td style="text-align:center" ><a href="https://github.com/tencentyun/TIMSDK/tree/master/Windows/IMSDK">GitHub (Recommended)</a></td>
 <td style="text-align:left" ><a href="https://www.tencentcloud.com/document/product/1047/34310">[General Integration] SDK Integration (Windows)</a></td>
+</tr>
+<tr>
+<td style="text-align:center">HarmonyOS  </td>
+<td style="text-align:center" ><a href="https://github.com/tencentyun/TIMSDK/tree/master/HarmonyOS/IMSDK">GitHub (Recommended)</a></td>
+<td style="text-align:left" ><a href="https://cloud.tencent.com/document/product/269/103558">[General Integration] SDK Integration (HarmonyOS)</a></td>
 </tr>
 </table>
 
@@ -149,25 +154,25 @@ Tencent Cloud branch download address: [Download](https://im.sdk.qcloud.com/down
 
 [API Upgrade Guidelines](https://docs.qq.com/sheet/DS3lMdHpoRmpWSEFW)
 
-## Latest Enhanced Version 7.7.5282 @2023.12.18
+## Latest Enhanced Version 8.0.5895 @2024.06.07
 ### SDK
-- Added V2TIMCommunityManager and V2TIMCommunityListener to integrate community topic interfaces
-- SDK supports Quic and advanced encryption plugins
-- Optimized conversation filtering logic
-- Topic information added createTime field
-- Live group supports setting administrators and pulling administrator list
-- Local content moderation regular expressions default ignore English case
-- Fixed occasional jni issues
-- Fixed occasional weak network message send callback error
-- Fixed occasional group tips message intValue change issue
-- Fixed Android SDK search English question mark failure problem
+- Added support for offline push settings with a large icon on the right side.
+- Pinned messages now support returning information about the operator.
+- Added support for returning group pinned messages that were deleted by oneself.
+- Added support for preserving conversation grouping information when deleting conversations.
+- Added system notifications for when conversation grouping information is eliminated by the backend.
+- Local message search now supports searching all single or group chat messages.
+- Completed system notifications for friend group changes.
+- The entry tips message and callback in a regular group can distinguish between active joining and being invited into the group.
+- Improved database query throughput and speed.
+- Optimized read receipt performance by merging duplicate requests.
+- Optimized the time range for group signaling synchronization after login.
+- Fixed an issue with pulling messages after inserting local messages in a topic.
 
 ### TUIKit & Demo
-- Added ChatBot plugin for intelligent chat, supporting FAQ question-and-answer format and streaming text message display
-- TUIKit adapted to Gradle 8.0
-- Simplified TUIKit component initialization steps and increased component dependency configuration
-- TUIChat supports half screen horizontal display in RoomKit
-- TUIChat supports adding message click and long press event listeners
-- Optimized TIMPush plugin
-- Optimized customer service plugin experience
-- Improved voice message click effect
+- TUIKit now supports message pinning.
+- TUIKit supports asynchronous striking of file messages.
+- TUIKit allows for entering the main interface to view local data without logging in after a network disconnection.
+- TUIKit no longer exposes the original message content when referencing and replying to a retracted message.
+- TUIKit replaces libopencore with AAC+M4A.
+- TUIChat Android supports saving images without extensions to the gallery.

@@ -10,8 +10,10 @@
 #import <TIMCommon/TIMDefine.h>
 #import <TUICore/TUIThemeManager.h>
 #import "TUIChatPopActionsView.h"
-#import "TUIChatPopEmojiView.h"
-#import "TUIChatPopRecentView.h"
+#import <TIMCommon/TIMCommonMediator.h>
+#import <TIMCommon/TUIEmojiMeditorProtocol.h>
+#import <TUICore/TUICore.h>
+#import "TUIFaceView.h"
 
 #define maxColumns 5
 #define kContainerInsets UIEdgeInsetsMake(3, 0, 3, 0)
@@ -37,10 +39,9 @@
 
 @end
 
-@interface TUIChatPopMenu () <UIGestureRecognizerDelegate, TUIFaceViewDelegate, TUIChatPopRecentEmojiDelegate>
+@interface TUIChatPopMenu () <UIGestureRecognizerDelegate,V2TIMAdvancedMsgListener>
 
 /**
- * emojiRecent 视图和 emoji 二级页视图
  * emojiRecent view and emoji secondary page view
  */
 @property(nonatomic, strong) UIView *emojiContainerView;
@@ -58,10 +59,6 @@
 @property(nonatomic, strong) CAShapeLayer *arrowLayer;
 
 @property(nonatomic, assign) CGFloat emojiHeight;
-
-@property(nonatomic, strong) TUIChatPopRecentView *emojiRecentView;
-
-@property(nonatomic, strong) TUIChatPopEmojiView *emojiAdvanceView;
 
 @property(nonatomic, strong) TUIChatPopActionsView *actionsView;
 
@@ -106,6 +103,7 @@
 
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(hideWithAnimation) name:UIKeyboardWillChangeFrameNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onThemeChanged) name:TUIDidApplyingThemeChangedNotfication object:nil];
+        [[V2TIMManager sharedInstance] addAdvancedMsgListener:self];
     }
     return self;
 }
@@ -218,7 +216,6 @@
 }
 - (void)setupContainerPosition {
     /**
-     * 计算坐标，并修正，默认箭头朝下
      * Calculate the coordinates and correct them, the default arrow points down
      */
     CGFloat minTopBottomMargin = (Is_IPhoneX ? (100) : (0.0));
@@ -228,7 +225,6 @@
     CGFloat upContainerY = self.arrawPoint.y + self.adjustHeight + kArrowSize.height;  // The containerY value when arrow points up
 
     /**
-     * 默认箭头朝下
      * The default arrow points down
      */
     CGFloat containerX = self.arrawPoint.x - 0.5 * containerW;
@@ -238,17 +234,14 @@
     CGFloat arrawY = kArrowSize.height + containerH - 1.5;
 
     /**
-     * 修正纵向坐标
      * Corrected vertical coordinates
      */
     if (containerY < minTopBottomMargin) {
         /**
-         * 此时 container 太靠上了，计划将箭头调整为朝上
          * At this time, the container is too high, and it is planned to adjust the direction of the arrow to upward.
          */
         if (upContainerY + containerH + minTopBottomMargin > self.superview.bounds.size.height) {
             /**
-             * 朝上也不行，超出了屏幕 ==> 保持箭头朝下，移动 self.arrawPoint
              * After adjusting the upward arrow direction, it will cause the entire container to exceed the screen. At this time, the adjustment strategy is
              * changed to: keep the arrow direction downward and move self.arrawPoint
              */
@@ -258,7 +251,6 @@
 
         } else {
             /**
-             * 箭头可以朝上
              * Adjust the direction of the arrow to meet the requirements
              */
             top = YES;
@@ -269,12 +261,11 @@
     }
 
     /**
-     * 修正横向
+     * 
      * Corrected horizontal coordinates
      */
     if (containerX < minLeftRightMargin) {
         /**
-         * 此时 container 太靠左了，需要往右靠
          * At this time, the container is too close to the left side of the screen and needs to move to the right
          */
         CGFloat offset = (minLeftRightMargin - containerX);
@@ -286,7 +277,6 @@
 
     } else if (containerX + containerW + minLeftRightMargin > self.bounds.size.width) {
         /**
-         * 此时container 太靠右了，需要往左靠
          * At this time, the container is too close to the right side of the screen and needs to be moved to the left
          */
         CGFloat offset = containerX + containerW + minLeftRightMargin - self.bounds.size.width;
@@ -301,7 +291,6 @@
     self.containerView.frame = CGRectMake(containerX, containerY + self.emojiHeight, containerW, containerH);
 
     /**
-     * 绘制 箭头
      * Drawing arrow
      */
     self.arrowLayer = [[CAShapeLayer alloc] init];
@@ -354,7 +343,6 @@
     }
 
     /**
-     * 计算当前 container 的宽高
      * Calculating the size of container
      */
     int rows = (self.actions.count % maxColumns == 0) ? (int)self.actions.count / maxColumns : (int)(self.actions.count / maxColumns) + 1;
@@ -374,28 +362,21 @@
     [self setupEmojiAdvanceView];
 }
 - (void)setupEmojiRecentView {
-    self.emojiRecentView = [[TUIChatPopRecentView alloc] initWithFrame:CGRectZero];
-    [self.emojiContainerView addSubview:_emojiRecentView];
-    _emojiRecentView.frame = CGRectMake(0, 0, self.emojiContainerView.mm_w, self.emojiHeight);
-    _emojiRecentView.backgroundColor = TUIChatDynamicColor(@"chat_pop_menu_bg_color", @"#FFFFFF");
-    _emojiRecentView.needShowbottomLine = YES;
-    _emojiRecentView.delegate = self;
+    NSDictionary *param = @{TUICore_TUIChatExtension_ChatPopMenuReactRecentView_Delegate : self};
+    BOOL isRaiseEmojiExtensionSuccess = [TUICore raiseExtension:TUICore_TUIChatExtension_ChatPopMenuReactRecentView_ClassicExtensionID
+                                                     parentView:self.emojiContainerView
+                                                          param:param];
+    if (!isRaiseEmojiExtensionSuccess) {
+        self.emojiHeight = 0;
+    }
 }
 - (void)setupEmojiAdvanceView {
-    self.emojiAdvanceView = [[TUIChatPopEmojiView alloc] initWithFrame:CGRectZero];
-    [self.emojiContainerView addSubview:_emojiAdvanceView];
-
-    [_emojiAdvanceView setData:(id)[TIMConfig defaultConfig].chatPopDetailGroups];
-    _emojiAdvanceView.delegate = self;
-    _emojiAdvanceView.alpha = 0;
-    _emojiAdvanceView.faceCollectionView.scrollEnabled = YES;
-    _emojiAdvanceView.faceCollectionView.delaysContentTouches = NO;
-    _emojiAdvanceView.backgroundColor = TUIChatDynamicColor(@"chat_pop_menu_bg_color", @"#FFFFFF");
-    _emojiAdvanceView.faceCollectionView.backgroundColor = _emojiAdvanceView.backgroundColor;
+    NSDictionary *param = @{TUICore_TUIChatExtension_ChatPopMenuReactRecentView_Delegate : self};
+    [TUICore raiseExtension:TUICore_TUIChatExtension_ChatPopMenuReactDetailView_ClassicExtensionID parentView:self.emojiContainerView param:param];
 }
+
 - (void)updateLayout {
-    self.emojiAdvanceView.frame =
-        CGRectMake(0, self.emojiHeight - 0.5, self.emojiContainerView.mm_w, TChatEmojiView_CollectionHeight + 10 + TChatEmojiView_Page_Height);
+    
     self.actionsView.frame = CGRectMake(0, -0.5, self.containerView.frame.size.width, self.containerView.frame.size.height);
 
     int columns = self.actions.count < maxColumns ? (int)self.actions.count : maxColumns;
@@ -509,6 +490,13 @@
     return _actionCallback;
 }
 
+// MARK: V2TIMAdvancedMsgListener
+- (void)onRecvMessageRevoked:(NSString *)msgID operateUser:(V2TIMUserFullInfo *)operateUser reason:(NSString *)reason {
+    if ([msgID isEqualToString:self.targetCellData.msgID]) {
+        [self hideWithAnimation];
+    }
+}
+
 // MARK: ThemeChanged
 - (void)applyBorderTheme {
     if (_arrowLayer) {
@@ -518,76 +506,5 @@
 
 - (void)onThemeChanged {
     [self applyBorderTheme];
-}
-
-// MARK: TUIFaceViewDelegate
-- (void)faceView:(TUIFaceView *)faceView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    TUIFaceGroup *group = faceView.faceGroups[indexPath.section];
-
-    TUIFaceCellData *face = group.faces[indexPath.row];
-    if (indexPath.section == 0) {
-        NSString *faceName = face.name;
-        NSLog(@"FaceName:%@", faceName);
-        [self updateRecentMenuQueue:faceName];
-        if (self.reactClickCallback) {
-            self.reactClickCallback(faceName);
-        }
-    }
-}
-
-- (NSArray *)getChatPopMenuQueue {
-    NSArray *emojis = [[NSUserDefaults standardUserDefaults] objectForKey:@"TUIChatPopMenuQueue"];
-    if (emojis && [emojis isKindOfClass:[NSArray class]]) {
-        if (emojis.count > 0) {
-            return emojis;
-        }
-    }
-    return [NSArray arrayWithContentsOfFile:TUIChatFaceImagePath(@"emoji/emojiRecentDefaultList.plist")];
-}
-- (void)updateRecentMenuQueue:(NSString *)faceName {
-    NSArray *emojis = [self getChatPopMenuQueue];
-    NSMutableArray *muArray = [NSMutableArray arrayWithArray:emojis];
-
-    BOOL hasInQueue = NO;
-    for (NSDictionary *dic in emojis) {
-        NSString *name = [dic objectForKey:@"face_name"];
-        if ([name isEqualToString:faceName]) {
-            hasInQueue = YES;
-        }
-    }
-    if (hasInQueue) {
-        return;
-    }
-
-    [muArray removeObjectAtIndex:0];
-    [muArray addObject:@{@"face_name" : faceName, @"face_id" : @""}];
-    [[NSUserDefaults standardUserDefaults] setObject:muArray forKey:@"TUIChatPopMenuQueue"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
-// MARK: TUIChatPopRecentEmojiDelegate
-- (void)popRecentViewClickArrow:(TUIChatPopRecentView *)faceView {
-    if (faceView.arrowButton.selected) {
-        [self hideDetailPage];
-    } else {
-        [self showDetailPage];
-    }
-}
-- (void)popRecentViewClickface:(TUIChatPopRecentView *)faceView tag:(NSInteger)tag {
-    TUIFaceGroup *group = faceView.faceGroups[0];
-    TUIFaceCellData *face = group.faces[tag];
-    NSString *faceName = face.name;
-    NSLog(@"FaceName:%@", faceName);
-    if (self.reactClickCallback) {
-        self.reactClickCallback(faceName);
-    }
-}
-- (void)showDetailPage {
-    self.containerView.alpha = 0;
-    self.emojiAdvanceView.alpha = 1;
-}
-- (void)hideDetailPage {
-    self.emojiAdvanceView.alpha = 0;
-    self.containerView.alpha = 1;
 }
 @end

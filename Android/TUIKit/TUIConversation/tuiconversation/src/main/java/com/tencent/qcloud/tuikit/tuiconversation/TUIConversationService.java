@@ -3,7 +3,6 @@ package com.tencent.qcloud.tuikit.tuiconversation;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.TextUtils;
-
 import com.google.auto.service.AutoService;
 import com.tencent.imsdk.v2.V2TIMConversation;
 import com.tencent.imsdk.v2.V2TIMConversationListener;
@@ -17,7 +16,10 @@ import com.tencent.qcloud.tuicore.TUILogin;
 import com.tencent.qcloud.tuicore.TUIThemeManager;
 import com.tencent.qcloud.tuicore.annotations.TUIInitializerDependency;
 import com.tencent.qcloud.tuicore.annotations.TUIInitializerID;
+import com.tencent.qcloud.tuicore.interfaces.ITUINotification;
+import com.tencent.qcloud.tuicore.interfaces.ITUIService;
 import com.tencent.qcloud.tuicore.interfaces.TUIInitializer;
+import com.tencent.qcloud.tuikit.timcommon.bean.TUIMessageBean;
 import com.tencent.qcloud.tuikit.timcommon.component.interfaces.IUIKitCallback;
 import com.tencent.qcloud.tuikit.tuiconversation.bean.ConversationGroupBean;
 import com.tencent.qcloud.tuikit.tuiconversation.bean.ConversationInfo;
@@ -36,7 +38,7 @@ import java.util.Map;
 @AutoService(TUIInitializer.class)
 @TUIInitializerDependency("TIMCommon")
 @TUIInitializerID("TUIConversation")
-public class TUIConversationService implements TUIInitializer, ITUIConversationService {
+public class TUIConversationService implements TUIInitializer, ITUIService, ITUINotification {
     public static final String TAG = TUIConversationService.class.getSimpleName();
     private static TUIConversationService instance;
 
@@ -91,6 +93,8 @@ public class TUIConversationService implements TUIInitializer, ITUIConversationS
             TUIConversationConstants.EVENT_CONVERSATION_GROUP_CHANGE_KEY, TUIConversationConstants.EVENT_CONVERSATION_GROUP_CHANGE_RENAME, this);
         TUICore.registerEvent(
             TUIConversationConstants.EVENT_CONVERSATION_GROUP_CHANGE_KEY, TUIConversationConstants.EVENT_CONVERSATION_GROUP_CHANGE_UNREAD_COUNT, this);
+        TUICore.registerEvent(
+            TUIConstants.TUIChat.Event.MessageDisplayString.KEY, TUIConstants.TUIChat.Event.MessageDisplayString.SUB_KEY_PROCESS_MESSAGE, this);
     }
 
     @Override
@@ -166,6 +170,8 @@ public class TUIConversationService implements TUIInitializer, ITUIConversationS
             handleConversationEvent(subKey, param);
         } else if (TextUtils.equals(key, TUIConversationConstants.EVENT_CONVERSATION_GROUP_CHANGE_KEY)) {
             handleConversationGroupChangedEvent(subKey, param);
+        } else if (TextUtils.equals(key, TUIConstants.TUIChat.Event.MessageDisplayString.KEY)) {
+            handleMessageBeanUpdateEvent(subKey, param);
         }
     }
 
@@ -365,6 +371,21 @@ public class TUIConversationService implements TUIInitializer, ITUIConversationS
             List<ConversationEventListener> conversationEventObserverList = getConversationEventListenerList();
             for (ConversationEventListener conversationEventObserver : conversationEventObserverList) {
                 conversationEventObserver.clearConversationMessage(groupId, true);
+            }
+        }
+    }
+
+    private void handleMessageBeanUpdateEvent(String subKey, Map<String, Object> param) {
+        if (TextUtils.equals(TUIConstants.TUIChat.Event.MessageDisplayString.SUB_KEY_PROCESS_MESSAGE, subKey)) {
+            String conversationID = (String) param.get(TUIConstants.TUIChat.Event.MessageDisplayString.CONVERSATION_ID);
+            TUIMessageBean messageBean = (TUIMessageBean) param.get(TUIConstants.TUIChat.Event.MessageDisplayString.MESSAGE_BEAN);
+            ConversationEventListener eventListener = getConversationEventListener();
+            if (eventListener != null) {
+                eventListener.onConversationLastMessageBeanChanged(conversationID, messageBean);
+            }
+            List<ConversationEventListener> conversationEventObserverList = getConversationEventListenerList();
+            for (ConversationEventListener conversationEventObserver : conversationEventObserverList) {
+                conversationEventObserver.onConversationLastMessageBeanChanged(conversationID, messageBean);
             }
         }
     }

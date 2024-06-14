@@ -22,6 +22,7 @@ import com.tencent.qcloud.tuikit.tuichat.bean.message.reply.VideoReplyQuoteBean;
 import com.tencent.qcloud.tuikit.tuichat.classicui.ClassicUIService;
 import com.tencent.qcloud.tuikit.tuichat.classicui.widget.message.reply.TextReplyQuoteView;
 import com.tencent.qcloud.tuikit.tuichat.util.ChatMessageParser;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
@@ -62,10 +63,22 @@ public class ReplyMessageHolder extends MessageContentHolder {
         TUIMessageBean replyContentBean = replyMessageBean.getContentMessageBean();
         String replyContent = replyContentBean.getExtra();
         String senderName = replyMessageBean.getOriginMsgSender();
+        TUIMessageBean originMessage = replyMessageBean.getOriginMessageBean();
+        if (originMessage != null) {
+            if (originMessage.isRevoked()) {
+                senderNameTv.setVisibility(View.GONE);
+            } else {
+                senderNameTv.setVisibility(View.VISIBLE);
+            }
+        }
         senderNameTv.setText(senderName + ":");
         FaceManager.handlerEmojiText(replyContentTv, replyContent, false);
-
-        performMsgAbstract(replyMessageBean, position);
+        if (replyMessageBean.isAbstractEnable()) {
+            performMsgAbstract(replyMessageBean);
+            quoteFrameLayout.setVisibility(View.VISIBLE);
+        } else {
+            quoteFrameLayout.setVisibility(View.GONE);
+        }
 
         msgArea.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
@@ -120,33 +133,27 @@ public class ReplyMessageHolder extends MessageContentHolder {
         }
     }
 
-    private void performMsgAbstract(ReplyMessageBean replyMessageBean, int position) {
+    private void performMsgAbstract(ReplyMessageBean replyMessageBean) {
         TUIMessageBean originMessage = replyMessageBean.getOriginMessageBean();
 
         TUIReplyQuoteBean replyQuoteBean = replyMessageBean.getReplyQuoteBean();
         if (originMessage != null) {
-            if (replyQuoteBean != null && replyQuoteBean.hasRiskContent()) {
-                String originAbstract = itemView.getResources().getString(R.string.chat_risk_content);
-                if (replyQuoteBean instanceof SoundReplyQuoteBean) {
-                    originAbstract = itemView.getResources().getString(R.string.chat_risk_sound);
-                } else if (replyQuoteBean instanceof ImageReplyQuoteBean) {
-                    originAbstract = itemView.getResources().getString(R.string.chat_risk_image);
-                } else if (replyQuoteBean instanceof VideoReplyQuoteBean) {
-                    originAbstract = itemView.getResources().getString(R.string.chat_risk_video);
-                }
-                TextReplyQuoteBean textReplyQuoteBean = new TextReplyQuoteBean();
-                textReplyQuoteBean.setText(originAbstract);
-                TextReplyQuoteView textReplyQuoteView = new TextReplyQuoteView(itemView.getContext());
-                textReplyQuoteView.onDrawReplyQuote(textReplyQuoteBean);
-                if (isForwardMode || isReplyDetailMode) {
-                    textReplyQuoteView.setSelf(false);
-                } else {
-                    textReplyQuoteView.setSelf(replyMessageBean.isSelf());
-                }
-                quoteFrameLayout.removeAllViews();
-                quoteFrameLayout.addView(textReplyQuoteView);
+            if (originMessage.isRevoked()) {
+                performText(replyMessageBean, itemView.getResources().getString(R.string.chat_reply_origin_message_revoked));
             } else {
-                performQuote(replyQuoteBean, replyMessageBean);
+                if (replyQuoteBean != null && replyQuoteBean.hasRiskContent()) {
+                    String originAbstract = itemView.getResources().getString(R.string.chat_risk_content);
+                    if (replyQuoteBean instanceof SoundReplyQuoteBean) {
+                        originAbstract = itemView.getResources().getString(R.string.chat_risk_sound);
+                    } else if (replyQuoteBean instanceof ImageReplyQuoteBean) {
+                        originAbstract = itemView.getResources().getString(R.string.chat_risk_image);
+                    } else if (replyQuoteBean instanceof VideoReplyQuoteBean) {
+                        originAbstract = itemView.getResources().getString(R.string.chat_risk_video);
+                    }
+                    performText(replyMessageBean, originAbstract);
+                } else {
+                    performQuote(replyQuoteBean, replyMessageBean);
+                }
             }
         } else {
             performNotFound(replyQuoteBean, replyMessageBean);
@@ -167,14 +174,9 @@ public class ReplyMessageHolder extends MessageContentHolder {
         }
     }
 
-    private void performNotFound(TUIReplyQuoteBean replyQuoteBean, ReplyMessageBean replyMessageBean) {
-        String typeStr = ChatMessageParser.getMsgTypeStr(replyQuoteBean.getMessageType());
-        String abstractStr = replyQuoteBean.getDefaultAbstract();
-        if (ChatMessageParser.isFileType(replyQuoteBean.getMessageType())) {
-            abstractStr = "";
-        }
+    private void performText(ReplyMessageBean replyMessageBean, String originAbstract) {
         TextReplyQuoteBean textReplyQuoteBean = new TextReplyQuoteBean();
-        textReplyQuoteBean.setText(typeStr + abstractStr);
+        textReplyQuoteBean.setText(originAbstract);
         TextReplyQuoteView textReplyQuoteView = new TextReplyQuoteView(itemView.getContext());
         textReplyQuoteView.onDrawReplyQuote(textReplyQuoteBean);
         if (isForwardMode || isReplyDetailMode) {
@@ -184,6 +186,15 @@ public class ReplyMessageHolder extends MessageContentHolder {
         }
         quoteFrameLayout.removeAllViews();
         quoteFrameLayout.addView(textReplyQuoteView);
+    }
+
+    private void performNotFound(TUIReplyQuoteBean replyQuoteBean, ReplyMessageBean replyMessageBean) {
+        String typeStr = ChatMessageParser.getMsgTypeStr(replyQuoteBean.getMessageType());
+        String abstractStr = replyQuoteBean.getDefaultAbstract();
+        if (ChatMessageParser.isFileType(replyQuoteBean.getMessageType())) {
+            abstractStr = "";
+        }
+        performText(replyMessageBean, typeStr + abstractStr);
     }
 
     private void performQuote(TUIReplyQuoteBean replyQuoteBean, ReplyMessageBean replyMessageBean) {

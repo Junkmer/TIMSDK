@@ -21,6 +21,9 @@
 #import "TUILinkCellData.h"
 #import "TUIMessageDataProvider.h"
 #import "TUITextMessageCellData.h"
+#import "TUIMessageController_Minimalist.h"
+#import "TUIGroupPinCell.h"
+#import "TUIGroupPinPageViewController.h"
 
 @interface TUIGroupChatViewController_Minimalist () <V2TIMGroupListener>
 
@@ -32,7 +35,9 @@
 @property(nonatomic, strong) TUIGroupPendencyDataProvider *pendencyViewModel;
 @property(nonatomic, strong) NSMutableArray<TUIUserModel *> *atUserList;
 @property(nonatomic, assign) BOOL responseKeyboard;
-
+@property(nonatomic, strong) TUIGroupPinCellView *oneGroupPinView;
+@property(nonatomic, strong) NSArray *groupPinList;
+@property(nonatomic, strong) TUIGroupPinPageViewController *pinPageVC;
 @end
 
 @implementation TUIGroupChatViewController_Minimalist
@@ -41,8 +46,18 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     [self setupTipsView];
+    [self setupGroupPinTips];
 
     [[V2TIMManager sharedInstance] addGroupListener:self];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(refreshTipsView)
+                                                 name:TUICore_TUIChatExtension_ChatViewTopArea_ChangedNotification
+                                               object:nil];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self refreshTipsView];
 }
 
 - (void)dealloc {
@@ -76,16 +91,173 @@
           CGFloat gap = (self.tipsView.mm_w - self.pendencyLabel.mm_w - self.pendencyBtn.mm_w - 8) / 2;
           self.pendencyLabel.mm_left(gap).mm__centerY(self.tipsView.mm_h / 2);
           self.pendencyBtn.mm_hstack(8);
-
           self.tipsView.alpha = 1;
-          UIView *topView = [TUIGroupChatViewController_Minimalist customTopView];
-          self.tipsView.mm_top(topView ? topView.mm_h : 0);
+          [self refreshTipsView];
       } else {
           self.tipsView.alpha = 0;
       }
     }];
 
     [self getPendencyList];
+}
+
+- (void)refreshTipsView {
+    UIView *topView = [TUIGroupChatViewController_Minimalist topAreaBottomView];
+    CGRect transRect = [topView convertRect:topView.bounds toView:self.view];
+    self.tipsView.frame = CGRectMake(0, transRect.origin.y + transRect.size.height, self.tipsView.frame.size.width, self.tipsView.frame.size.height);
+}
+
+- (void)setupGroupPinTips {
+    self.oneGroupPinView = [[TUIGroupPinCellView alloc] init];
+    CGFloat margin = 0 ;
+    self.oneGroupPinView.frame = CGRectMake(0, margin, self.view.frame.size.width, 62);
+    UIView *topView = [TUIGroupChatViewController_Minimalist groupPinTopView];
+    for (UIView *subview in topView.subviews) {
+        [subview removeFromSuperview];
+    }
+    topView.frame = CGRectMake(0, 0, self.view.mm_w, 0);
+    [topView addSubview:self.oneGroupPinView];
+    @weakify(self);
+    self.oneGroupPinView.isFirstPage = YES;
+    self.oneGroupPinView.onClickCellView = ^(V2TIMMessage *originMessage) {
+        @strongify(self);
+        if (self.groupPinList.count >= 2) {
+            [self gotoDetailPopPinPage];
+        }
+        else {
+            [self jump2GroupPinHighlightLine:originMessage];
+        }
+
+    };
+    self.oneGroupPinView.onClickRemove = ^(V2TIMMessage *originMessage) {
+        @strongify(self);
+        [self.messageController unPinGroupMessage:originMessage];
+    };
+    self.messageController.pinGroupMessageChanged = ^(NSArray * _Nonnull groupPinList) {
+        @strongify(self);
+        if (groupPinList.count > 0 ) {
+            if (!self.oneGroupPinView.superview) {
+                [topView addSubview:self.oneGroupPinView];
+            }
+            TUIMessageCellData * cellData = [TUIMessageDataProvider getCellData:[groupPinList lastObject]];
+            [self.oneGroupPinView fillWithData:cellData];
+            if (groupPinList.count >= 2) {
+                [self.oneGroupPinView showMultiAnimation];
+                topView.frame = CGRectMake(0, 0, self.view.mm_w, self.oneGroupPinView.frame.size.height +20 + margin);
+                self.oneGroupPinView.removeButton.hidden = YES;
+            }
+            else {
+                [self.oneGroupPinView hiddenMultiAnimation];
+                topView.frame = CGRectMake(0, 0, self.view.mm_w, self.oneGroupPinView.frame.size.height + margin);
+                if ([self.messageController isCurrentUserRoleSuperAdminInGroup]) {
+                    self.oneGroupPinView.removeButton.hidden = NO;
+                }
+                else {
+                    self.oneGroupPinView.removeButton.hidden = YES;
+                }
+            }
+        }
+        else {
+            [self.oneGroupPinView removeFromSuperview];
+            topView.frame = CGRectMake(0, 0, self.view.mm_w, 0);
+        }
+        self.groupPinList = groupPinList;
+        [[NSNotificationCenter defaultCenter] postNotificationName:TUICore_TUIChatExtension_ChatViewTopArea_ChangedNotification object:nil];
+        if (self.pinPageVC) {
+            self.pinPageVC.groupPinList = groupPinList;
+            self.pinPageVC.canRemove = [self.messageController isCurrentUserRoleSuperAdminInGroup];
+            if (groupPinList.count > 0) {
+                [self reloadPopPinPage];
+            }
+            else {
+                [self.pinPageVC dismissViewControllerAnimated:NO completion:nil];
+            }
+        }
+    };
+    self.messageController.groupRoleChanged = ^(V2TIMGroupMemberRole role) {
+        @strongify(self);
+        self.messageController.pinGroupMessageChanged(self.groupPinList);
+        if (self.pinPageVC) {
+            self.pinPageVC.canRemove = [self.messageController isCurrentUserRoleSuperAdminInGroup];
+            [self.pinPageVC.tableview reloadData];
+        }
+    };
+
+}
+
+- (void)gotoDetailPopPinPage {
+    TUIGroupPinPageViewController *vc = [[TUIGroupPinPageViewController alloc] init];
+    self.pinPageVC = vc;
+    NSMutableArray *formatGroupPinList = [NSMutableArray arrayWithArray:self.groupPinList.reverseObjectEnumerator.allObjects];
+    vc.groupPinList = formatGroupPinList;
+    vc.canRemove = [self.messageController isCurrentUserRoleSuperAdminInGroup];
+    vc.view.frame = self.view.frame;
+    CGFloat cellHight = (62);
+    CGFloat maxOnePage = 4;
+    float height = (self.groupPinList.count) * cellHight;
+    height = MIN(cellHight * maxOnePage , height);
+    UIView *topView = [TUIGroupChatViewController_Minimalist groupPinTopView];
+    CGRect transRect = [topView convertRect:topView.bounds toView:[UIApplication sharedApplication].delegate.window];
+    vc.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    @weakify(self);
+    [self presentViewController:vc animated:NO completion:^{
+        vc.tableview.frame = CGRectMake(0, CGRectGetMinY(transRect), self.view.frame.size.width, 60);
+        vc.customArrowView.frame = CGRectMake(0, CGRectGetMaxY(vc.tableview.frame), vc.tableview.frame.size.width, 0);
+        vc.bottomShadow.frame = CGRectMake(0, CGRectGetMaxY(vc.customArrowView.frame), vc.tableview.frame.size.width, 0);
+        [UIView animateWithDuration:0.3 animations:^{
+            vc.tableview.frame = CGRectMake(0, CGRectGetMinY(transRect), self.view.frame.size.width, height);
+            vc.customArrowView.frame = CGRectMake(0, CGRectGetMaxY(vc.tableview.frame), vc.tableview.frame.size.width, 40);
+            vc.bottomShadow.frame = CGRectMake(0, CGRectGetMaxY(vc.customArrowView.frame),
+                                               vc.tableview.frame.size.width,
+                                               self.view.frame.size.height);
+            UIBezierPath *maskPath = [UIBezierPath bezierPathWithRoundedRect:vc.customArrowView.bounds 
+                                                           byRoundingCorners:(UIRectCornerBottomLeft | UIRectCornerBottomRight)
+                                                                 cornerRadii:CGSizeMake(10.0, 10.0)];
+            CAShapeLayer *maskLayer = [[CAShapeLayer alloc] init];
+            maskLayer.frame = vc.customArrowView.bounds;
+            maskLayer.path = maskPath.CGPath;
+            vc.customArrowView.layer.mask = maskLayer;
+        }];
+    }];
+    
+    vc.onClickRemove = ^(V2TIMMessage *originMessage) {
+        @strongify(self);
+        [self.messageController unPinGroupMessage:originMessage];
+    };
+    
+    vc.onClickCellView = ^(V2TIMMessage *originMessage) {
+        @strongify(self);
+        [self jump2GroupPinHighlightLine:originMessage];
+    };
+    
+}
+- (void)jump2GroupPinHighlightLine:(V2TIMMessage *)originMessage {
+    TUIMessageController_Minimalist *msgVC = (TUIMessageController_Minimalist *)self.messageController;
+    NSString * originMsgID = originMessage.msgID;
+    [msgVC findMessages:@[originMsgID ?: @""] callback:^(BOOL success, NSString * _Nonnull desc, NSArray<V2TIMMessage *> * _Nonnull messages) {
+        if (success) {
+            V2TIMMessage *message = messages.firstObject;
+            if (message && message.status == V2TIM_MSG_STATUS_SEND_SUCC ) {
+                [msgVC locateAssignMessage:originMessage matchKeyWord:@""];
+            }
+            else {
+                [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
+            }
+        }
+    }];
+}
+
+- (void)reloadPopPinPage {
+    CGFloat cellHight = (62);
+    CGFloat maxOnePage = 4;
+    float height = (self.groupPinList.count) * cellHight;
+    height = MIN(cellHight * maxOnePage , height);
+    self.pinPageVC.tableview.frame = CGRectMake(0, self.pinPageVC.tableview.frame.origin.y, self.view.frame.size.width, height);
+    self.pinPageVC.customArrowView.frame = CGRectMake(0, CGRectGetMaxY(self.pinPageVC.tableview.frame), self.pinPageVC.tableview.frame.size.width, 40);
+    self.pinPageVC.bottomShadow.frame = CGRectMake(0, CGRectGetMaxY(self.pinPageVC.customArrowView.frame),
+                                                   self.pinPageVC.tableview.frame.size.width,
+                                       self.view.frame.size.height);
+    [self.pinPageVC.tableview reloadData];
 }
 
 - (void)getPendencyList {
@@ -97,13 +269,13 @@
     @weakify(self);
     vc.cellClickBlock = ^(TUIGroupPendencyCell *_Nonnull cell) {
       if (cell.pendencyData.isRejectd || cell.pendencyData.isAccepted) {
-          // 选择后不再进详情页了
+          // No longer enter the details page after selection
           return;
       }
       @strongify(self);
       [[V2TIMManager sharedInstance] getUsersInfo:@[ cell.pendencyData.fromUser ]
                                              succ:^(NSArray<V2TIMUserFullInfo *> *profiles) {
-                                               // 显示用户资料 VC
+                                               // Show user profile VC
                                                NSDictionary *param = @{
                                                    TUICore_TUIContactObjectFactory_UserProfileController_UserProfile : profiles.firstObject,
                                                    TUICore_TUIContactObjectFactory_UserProfileController_PendencyData : cell.pendencyData,
@@ -151,7 +323,6 @@
 #pragma mark - TUIInputControllerDelegate
 - (void)inputController:(TUIInputController_Minimalist *)inputController didSendMessage:(V2TIMMessage *)msg {
     /**
-     * 文本消息如果有 @ 用户，需要 createTextAtMessage
      * If the text message has @ user, createTextAtMessage is required
      */
     if (msg.elemType == V2TIM_ELEM_TYPE_TEXT) {
@@ -167,7 +338,6 @@
             msg.cloudCustomData = cloudCustomData;
         }
         /**
-         * 消息发送完后 atUserList 要重置
          * After the message is sent, the atUserList need to be reset
          */
         [self.atUserList removeAllObjects];
@@ -178,7 +348,6 @@
 - (void)inputControllerDidInputAt:(TUIInputController_Minimalist *)inputController {
     [super inputControllerDidInputAt:inputController];
     /**
-     * 检测到 @ 字符的输入
      * Input of @ character detected
      */
     if (self.conversationData.groupID.length > 0) {

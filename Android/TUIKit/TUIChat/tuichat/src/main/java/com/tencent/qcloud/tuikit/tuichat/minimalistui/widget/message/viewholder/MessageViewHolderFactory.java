@@ -12,15 +12,20 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 public class MessageViewHolderFactory {
+    public static final int VIEW_TYPE_HEAD = -99;
+    public static final int VIEW_TYPE_TAIL = -98;
+
     public static RecyclerView.ViewHolder getInstance(ViewGroup parent, ICommonMessageAdapter adapter, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         RecyclerView.ViewHolder holder = null;
         View view = null;
 
-        if (viewType == MessageBaseHolder.MSG_TYPE_HEADER_VIEW) {
+        if (viewType == VIEW_TYPE_HEAD) {
             view = inflater.inflate(R.layout.chat_loading_progress_bar, parent, false);
-            holder = new MessageHeaderHolder(view);
-            return holder;
+            return new MessageHeadHolder(view);
+        }
+        if (viewType == VIEW_TYPE_TAIL) {
+            return new MessageTailHolder(new View(parent.getContext()));
         }
 
         if (MinimalistUIService.getInstance().isNeedEmptyViewGroup(viewType)) {
@@ -34,16 +39,17 @@ public class MessageViewHolderFactory {
         if (holder == null) {
             holder = new TextMessageHolder(view);
         }
-        ((MessageBaseHolder) holder).setAdapter(adapter);
+        if (holder instanceof MessageBaseHolder) {
+            ((MessageBaseHolder) holder).setAdapter(adapter);
+        }
 
         return holder;
     }
 
     private static RecyclerView.ViewHolder getViewHolder(View view, int viewType) {
-        Class<? extends MessageBaseHolder> messageHolderClazz = MinimalistUIService.getInstance().getMessageViewHolderClass(viewType);
-        ;
+        Class<? extends RecyclerView.ViewHolder> messageHolderClazz = MinimalistUIService.getInstance().getMessageViewHolderClass(viewType);
         if (messageHolderClazz != null) {
-            Constructor<? extends MessageBaseHolder> constructor;
+            Constructor<? extends RecyclerView.ViewHolder> constructor;
             try {
                 constructor = messageHolderClazz.getConstructor(View.class);
                 return constructor.newInstance(view);

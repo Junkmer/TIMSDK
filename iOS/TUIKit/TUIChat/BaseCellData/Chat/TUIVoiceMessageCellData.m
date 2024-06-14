@@ -9,7 +9,6 @@
 #import "TUIVoiceMessageCellData.h"
 #import <TIMCommon/TIMDefine.h>
 #import <TUICore/TUIThemeManager.h>
-#import "EMVoiceConverter.h"
 @import AVFoundation;
 
 @interface TUIVoiceMessageCellData () <AVAudioPlayerDelegate>
@@ -32,7 +31,7 @@
 }
 
 + (NSString *)getDisplayString:(V2TIMMessage *)message {
-    return TIMCommonLocalizableString(TUIKitMessageTypeVoice);  // @"[语音]";
+    return TIMCommonLocalizableString(TUIKitMessageTypeVoice);  // @"[Voice]";
 }
 
 - (Class)getReplyQuoteViewDataClass {
@@ -134,7 +133,7 @@
         if (self.isDownloading) {
             return;
         }
-        // 网络下载
+        // 
         self.isDownloading = YES;
         @weakify(self);
         [imSound downloadSound:path
@@ -170,7 +169,6 @@
     bool result = [self.audioPlayer play];
     if (!result) {
         self.wavPath = [[path stringByDeletingPathExtension] stringByAppendingString:@".wav"];
-        [EMVoiceConverter amrToWav:path wavSavePath:self.wavPath];
         NSURL *url = [NSURL fileURLWithPath:self.wavPath];
         [self.audioPlayer stop];
         self.audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:url error:nil];

@@ -39,18 +39,18 @@
     self = [super initWithFrame:frame];
     if (self) {
         self.backgroundColor = TUIChatDynamicColor(@"chat_small_tongue_bg_color", @"#FFFFFF");
-        // 边框
+        // border
         self.layer.borderWidth = 0.2;
         self.layer.borderColor = TUIChatDynamicColor(@"chat_small_tongue_line_color", @"#E5E5E5").CGColor;
         self.layer.cornerRadius = 2;
         self.layer.masksToBounds = YES;
-        // 阴影
+        // shadow
         self.layer.shadowColor = RGBA(0, 0, 0, 0.15).CGColor;
         self.layer.shadowOpacity = 1;
         self.layer.shadowOffset = CGSizeMake(0, 0);
         self.layer.shadowRadius = 2;
         self.clipsToBounds = NO;
-        // 点击事件
+        //  tap
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onTap)];
         [self addGestureRecognizer:tap];
     }
@@ -114,11 +114,11 @@
     if (tongue.type == TUIChatSmallTongueType_SomeoneAt) {
         NSString *atMeStr = TIMCommonLocalizableString(TUIKitConversationTipsAtMe);
         NSString *atAllStr = TIMCommonLocalizableString(TUIKitConversationTipsAtAll);
-        if ([tongue.atTipsStr containsString:atMeStr]) {
+        if ([tongue.atTipsStr tui_containsString:atMeStr]) {
             atMeStr = [atMeStr stringByReplacingOccurrencesOfString:@"[" withString:@""];
             atMeStr = [atMeStr stringByReplacingOccurrencesOfString:@"]" withString:@""];
             [titleCacheFormat setObject:atMeStr forKey:@(TUIChatSmallTongueType_SomeoneAt)];
-        } else if ([tongue.atTipsStr containsString:atAllStr]) {
+        } else if ([tongue.atTipsStr tui_containsString:atAllStr]) {
             atAllStr = [atAllStr stringByReplacingOccurrencesOfString:@"[" withString:@""];
             atAllStr = [atAllStr stringByReplacingOccurrencesOfString:@"]" withString:@""];
             [titleCacheFormat setObject:atAllStr forKey:@(TUIChatSmallTongueType_SomeoneAt)];

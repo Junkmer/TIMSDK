@@ -5,7 +5,6 @@ import static com.tencent.cloud.tuikit.roomkit.imaccess.AccessRoomConstants.MSG_
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -20,12 +19,12 @@ import com.tencent.cloud.tuikit.roomkit.imaccess.AccessRoomConstants;
 import com.tencent.cloud.tuikit.roomkit.imaccess.model.observer.RoomMsgData;
 import com.tencent.cloud.tuikit.roomkit.imaccess.model.observer.RoomMsgUserEntity;
 import com.tencent.cloud.tuikit.roomkit.imaccess.presenter.RoomPresenter;
-import com.tencent.cloud.tuikit.roomkit.imaccess.utils.BusinessSceneUtil;
-import com.tencent.cloud.tuikit.roomkit.utils.ImageLoader;
+import com.tencent.cloud.tuikit.roomkit.common.utils.BusinessSceneUtil;
+import com.tencent.cloud.tuikit.roomkit.common.utils.ImageLoader;
+import com.tencent.cloud.tuikit.roomkit.common.utils.RoomToast;
 import com.tencent.imsdk.v2.V2TIMCustomElem;
 import com.tencent.imsdk.v2.V2TIMMessage;
 import com.tencent.qcloud.tuicore.TUILogin;
-import com.tencent.qcloud.tuicore.util.ToastUtil;
 import com.tencent.qcloud.tuikit.timcommon.bean.TUIMessageBean;
 import com.tencent.qcloud.tuikit.timcommon.classicui.widget.message.MessageContentHolder;
 
@@ -92,9 +91,8 @@ public class RoomMessageHolder extends MessageContentHolder {
             Log.d(TAG, "mFullJoinBtn onclick userId=" + TUILogin.getUserId() + " userName=" + TUILogin.getNickName());
             if (BusinessSceneUtil.canJoinRoom()) {
                 RoomPresenter.getInstance().enterRoom(mRoomMsgData);
-                BusinessSceneUtil.setJoinRoomFlag();
             } else {
-                ToastUtil.toastLongMessage(
+                RoomToast.toastLongMessage(
                         TUILogin.getAppContext().getResources().getString(R.string.tuiroomkit_can_not_join_room_tip));
             }
         });

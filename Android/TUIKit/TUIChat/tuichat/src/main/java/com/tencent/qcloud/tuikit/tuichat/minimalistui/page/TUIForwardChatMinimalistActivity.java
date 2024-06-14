@@ -44,6 +44,7 @@ public class TUIForwardChatMinimalistActivity extends BaseMinimalistLightActivit
         mForwardChatAdapter = new MessageAdapter();
         mForwardChatAdapter.setForwardMode(true);
         presenter = new ForwardPresenter();
+        presenter.initListener();
         presenter.setMessageListAdapter(mForwardChatAdapter);
         presenter.setNeedShowBottom(false);
         mForwardChatAdapter.setPresenter(presenter);
@@ -77,6 +78,7 @@ public class TUIForwardChatMinimalistActivity extends BaseMinimalistLightActivit
                 if (messageBean instanceof MergeMessageBean) {
                     Intent intent = new Intent(view.getContext(), TUIForwardChatMinimalistActivity.class);
                     intent.putExtra(TUIChatConstants.FORWARD_MERGE_MESSAGE_KEY, messageBean);
+                    intent.putExtra(TUIChatConstants.CHAT_INFO, chatInfo);
                     startActivity(intent);
                 }
             }

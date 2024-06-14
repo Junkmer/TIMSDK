@@ -247,7 +247,7 @@ public class TUIVideoSeatView extends RelativeLayout {
             mUserDisplayView.enableVolumeEffect(newUser.isAudioAvailable());
             mUserDisplayView.updateVolumeEffect(newUser.getAudioVolume());
             mUserDisplayView.setVolume(newUser.isTalk());
-            // sdk 最后不会回调音量0，所以 app 需要每次将音量清 0
+            // The SDK will not call back the volume to 0 in the end, so the app needs to clear the volume to 0 every time.
             newUser.setAudioVolume(VOLUME_NO_SOUND);
         }
     }
@@ -333,7 +333,7 @@ public class TUIVideoSeatView extends RelativeLayout {
      * @param toItem
      */
     private void processVideoPlay(int fromItem, int toItem) {
-        if (mViewModel == null) {
+        if (mViewModel == null || fromItem < 0 || toItem >= mMemberEntityList.size()) {
             return;
         }
         List<String> newUserIds = new ArrayList<>();

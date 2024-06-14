@@ -2,6 +2,117 @@ English | [简体中文](./版本历史.md)
 
 # TIMSDK
 
+## 8.0.5895 @2024.06.07 - Enhanced Version
+### SDK
+- Added support for offline push settings with a large icon on the right side.
+- Pinned messages now support returning information about the operator.
+- Added support for returning group pinned messages that were deleted by oneself.
+- Added support for preserving conversation grouping information when deleting conversations.
+- Added system notifications for when conversation grouping information is eliminated by the backend.
+- Local message search now supports searching all single or group chat messages.
+- Completed system notifications for friend group changes.
+- The entry tips message and callback in a regular group can distinguish between active joining and being invited into the group.
+- Improved database query throughput and speed.
+- Optimized read receipt performance by merging duplicate requests.
+- Optimized the time range for group signaling synchronization after login.
+- Fixed an issue with pulling messages after inserting local messages in a topic.
+
+### TUIKit & Demo
+- TUIKit now supports message pinning.
+- TUIKit supports asynchronous striking of file messages.
+- TUIKit allows for entering the main interface to view local data without logging in after a network disconnection.
+- TUIKit no longer exposes the original message content when referencing and replying to a retracted message.
+- TUIKit replaces libopencore with AAC+M4A.
+- TUIChat Android supports saving images without extensions to the gallery.
+
+## 7.9.5680 @2024.04.19 - Enhanced Version
+### SDK
+- Fix the issue of the pinned message list returning in the wrong order
+- Fix the issue of incorrect parsing of the Tips type of pinned messages
+- Fix the issue of log writing failure on some Android phones
+- Fix the occasional incomplete retrieval of group roaming messages from old to new
+- Fix the occasional inability to retrieve local messages when pulling historical messages from topics
+- Fix the issue where sessions deleted from the conversation group are reactivated after logging in again
+
+## 7.9.5666 @2024.04.07 - Enhanced Version
+### SDK
+
+- New visionOS SDK, compatible with Apple Vision Pro
+- Group conversation supports message pinning
+- Add the function of receiving group @ reminder offline notifications during Do Not Disturb mode
+- Support setting friend remarks in the "Accept Friend Request" interface
+- Add handling of invitations to join groups
+- Upgrade vivo push package version in TIMPush
+- Fix OV device crash issue in TIMPush
+- Add OfflinePushExtInfo support for push through feature in TIMPush
+- Fix the issue of not receiving the notification of being kicked out due to network disconnection
+- Fix the issue of occasionally not receiving group messages when joining a live group immediately in the login callback
+- Fix the issue of still receiving session change callbacks after receiving the delete session callback
+- Fix the issue of occasional reset of local data in messages
+- Fix the issue of frequent triggering of onRecvMessageModified callback when fetching historical messages
+- Fix the issue of no return value and no support for optional values in some Swift interfaces
+- Fix the multi-endpoint login exception caused by iCloud sync between different types of devices with the same AppleID
+- Fix related issues of communities and topics
+- Fix the issue of failing to fetch historical messages on HarmonyOS platform
+- Upgrade libcurl in Windows platform to 8.4.0
+- Fix the issue of duplicate summary in merged forwarded messages in C++ interface
+- Fix the issue of unable to download large images in C++ interface
+- Fix the issue of incorrect group type in C++ interface
+- Fix the issue of unable to set message custom data in C++ interface
+- Fix the forwarding message failure in C++ interface
+
+### TUIKit & Demo
+
+- iOS components provide PrivacyInfo.xcprivacy privacy list file
+- TUIChatBot plugin supports markdown text display
+- TUIChat chat page header supports displaying call status
+
+## 7.8.5505 @2024.03.01 - Enhanced Version
+### SDK
+- Add PrivacyInfo.xcprivacy privacy file for iOS & Mac SDK
+- Fix the issue that C++ SDK cannot set localCustomData
+- Fix the issue of Swift SDK location message data type error
+- Fix the occasional issue of triggering "message update" callback when pulling historical messages
+- Fix the topic at message exception issue
+- Fix the issue of fetching exceptions in group and topic lists
+- Fix other stability issues
+
+## 7.8.5483 @2024.02.01 - Enhanced Version（The version for Android is 7.8.5484）
+### SDK
+- Support HarmonyOS platform
+- Support Loongson architecture
+- Release TIMPush-UniApp
+- FCM push supports pass-through messages
+- Add permission group function for community topics
+- Add stranger attention/fan function
+- Support configuring cloud message audit policy
+- Support deleting accounts
+- Topic information supports obtaining the readSequence field
+- Fix the problem that after deleting a local inserted group message, the new message received does not update the unread count
+- Fix the problem that the SDK does not callback occasionally after the user subscribes to multiple official accounts at the same time
+- Fix the inconsistency of msgID before and after sending official account messages
+- Fix the problem that the callback does not occur occasionally after subscribing to conversation group unread counts
+- Fix the problem of abnormal creation time of topics
+- Fix the problem that when pulling topic information before and after joining the community, the unread count does not change.
+- Fix the problem of incorrect notification message type for topic information updates
+- Fix the problem that withdrawn status messages can be searched under certain conditions
+- Fix the issue of onApplicationProcessed callback being called multiple times
+
+### TUIKit & Demo
+- Add the TUIEmojiPlugin plugin to support emoticon response functions
+- TUIChat supports adding and displaying gif dynamic emoticons
+- Upgrade the built-in small emoji pack in TUIChat to the new version of yellow face emojis
+- Fix the problem of TUIChat on iOS black screen when clicking image messages
+
+## 7.7.5294 @2023.12.27 - Enhanced Version
+### SDK
+- Optimize Room control logic
+- Solve the problem that the SDK cannot receive notifications of conversation deletion from the group when the local conversation does not exist
+- Solve the problem that a conversation's last message can still be searched when it is in a withdrawn state
+- Solve the problem that message senders cannot receive message change callbacks after live group messages are modified by third-party callbacks
+- Fix occasional stability problems in the log module
+- Optimize community topic unread count logic
+- 
 ## 7.7.5282 @2023.12.18 - Enhanced Version
 ### SDK
 - Added V2TIMCommunityManager and V2TIMCommunityListener to integrate community topic interfaces

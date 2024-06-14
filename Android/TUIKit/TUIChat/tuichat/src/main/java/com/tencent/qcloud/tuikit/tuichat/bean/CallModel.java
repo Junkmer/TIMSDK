@@ -8,19 +8,23 @@ import com.tencent.imsdk.v2.V2TIMManager;
 import com.tencent.imsdk.v2.V2TIMMessage;
 import com.tencent.imsdk.v2.V2TIMSignalingInfo;
 import com.tencent.qcloud.tuicore.TUIConstants;
+import com.tencent.qcloud.tuikit.timcommon.bean.UserBean;
 import com.tencent.qcloud.tuikit.timcommon.util.DateTimeUtil;
 import com.tencent.qcloud.tuikit.tuichat.R;
 import com.tencent.qcloud.tuikit.tuichat.TUIChatService;
 import com.tencent.qcloud.tuikit.tuichat.util.TUIChatLog;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class CallModel implements Cloneable, Serializable {
     private static final String TAG = CallModel.class.getSimpleName();
 
     /**
-     * 通话协议类型
+     *
      * The protocol type of calls
      */
     public static final int CALL_PROTOCOL_TYPE_UNKNOWN = 0;
@@ -35,7 +39,7 @@ public class CallModel implements Cloneable, Serializable {
     public static final int CALL_PROTOCOL_TYPE_SWITCH_TO_AUDIO_COMFIRM = 9;
 
     /**
-     * 通话流媒体类型
+     *
      * The stream media type of calls
      */
     public static final int CALL_STREAM_MEDIA_TYPE_UNKNOWN = 0;
@@ -43,7 +47,7 @@ public class CallModel implements Cloneable, Serializable {
     public static final int CALL_STREAM_MEDIA_TYPE_VIDEO = 2;
 
     /**
-     * 通话的参与者样式
+     *
      * The participant style of calls
      */
     public static final int CALL_PARTICIPANT_TYPE_UNKNOWN = 0;
@@ -51,7 +55,7 @@ public class CallModel implements Cloneable, Serializable {
     public static final int CALL_PARTICIPANT_TYPE_GROUP = 2;
 
     /**
-     * 通话人员的角色
+     *
      * The role of participant
      */
     public static final int CALL_PARTICIPANT_ROLE_UNKNOWN = 0;
@@ -65,7 +69,6 @@ public class CallModel implements Cloneable, Serializable {
     public static final int CALL_MESSAGE_DIRECTION_OUTGOING = 1;
 
     /**
-     * 音视频通话消息的 UI 外观
      * The style of voice-video-call message in TUIChat
      */
     public static final int CHAT_CALLING_MESSAGE_APPEARANCE_DETAILS = 0;
@@ -88,6 +91,41 @@ public class CallModel implements Cloneable, Serializable {
 
     public void setInnerMessage(V2TIMMessage innerMessage) {
         this.innerMessage = innerMessage;
+    }
+
+    private int protocolType = CALL_PROTOCOL_TYPE_UNKNOWN;
+
+    private int streamMediaType = CALL_STREAM_MEDIA_TYPE_UNKNOWN;
+    private int participantType = CALL_PARTICIPANT_TYPE_UNKNOWN;
+    private int participantRole = CALL_PARTICIPANT_ROLE_UNKNOWN;
+    private String caller = "";
+    private Map<String, UserBean> participantsMap = new LinkedHashMap<>();
+    private int duration = 0;
+
+    public int getParticipantRole() {
+        return participantRole;
+    }
+
+    public int getParticipantType() {
+        return participantType;
+    }
+
+    public int getStreamMediaType() {
+        return streamMediaType;
+    }
+
+    public int getProtocolType() {
+        return protocolType;
+    }
+
+    public String getCaller() {
+        return caller;
+    }
+
+    public void setParticipant(String userId, UserBean userBean) {
+        if (participantsMap.containsKey(userId)) {
+            participantsMap.put(userId, userBean);
+        }
     }
 
     public static CallModel convert2VideoCallData(V2TIMMessage msg) {
@@ -124,11 +162,20 @@ public class CallModel implements Cloneable, Serializable {
         callModel.signalingInfo = signalingInfo;
         callModel.innerMessage = msg;
         callModel.style = CHAT_CALLING_MESSAGE_APPEARANCE_SIMPLIFY;
+        callModel.caller = callModel.parseCaller();
+        callModel.protocolType = callModel.parseProtocolType();
+        callModel.streamMediaType = callModel.parseStreamMediaType();
+        callModel.participantType = callModel.parseParticipantType();
+        callModel.participantRole = callModel.parseParticipantRole();
+        callModel.duration = callModel.parseDuration();
+        for (String invitee : signalingInfo.getInviteeList()) {
+            callModel.participantsMap.put(invitee, null);
+        }
         return callModel;
     }
 
     // ************** Parser for content ****************
-    public int getProtocolType() {
+    private int parseProtocolType() {
         if (this.jsonData == null || this.signalingInfo == null || this.innerMessage == null) {
             return CALL_PROTOCOL_TYPE_UNKNOWN;
         }
@@ -206,8 +253,8 @@ public class CallModel implements Cloneable, Serializable {
         return type;
     }
 
-    public int getStreamMediaType() {
-        if (getProtocolType() == CALL_PROTOCOL_TYPE_UNKNOWN) {
+    private int parseStreamMediaType() {
+        if (protocolType == CALL_PROTOCOL_TYPE_UNKNOWN) {
             return CALL_STREAM_MEDIA_TYPE_UNKNOWN;
         }
 
@@ -223,7 +270,6 @@ public class CallModel implements Cloneable, Serializable {
         }
 
         // Read from special protocol
-        int protocolType = getProtocolType();
         if (protocolType == CALL_PROTOCOL_TYPE_SEND) {
             Map data = (Map) this.jsonData.get("data");
             if (data != null && data instanceof Map) {
@@ -243,8 +289,8 @@ public class CallModel implements Cloneable, Serializable {
         return type;
     }
 
-    public int getParticipantType() {
-        if (getProtocolType() == CALL_PROTOCOL_TYPE_UNKNOWN) {
+    private int parseParticipantType() {
+        if (this.protocolType == CALL_PROTOCOL_TYPE_UNKNOWN) {
             return CALL_PARTICIPANT_TYPE_UNKNOWN;
         }
 
@@ -255,7 +301,7 @@ public class CallModel implements Cloneable, Serializable {
         }
     }
 
-    public String getCaller() {
+    private String parseCaller() {
         String callerID = null;
         Map data = (Map) this.jsonData.get("data");
         if (data != null && data instanceof Map) {
@@ -270,8 +316,8 @@ public class CallModel implements Cloneable, Serializable {
         return callerID;
     }
 
-    public int getParticipantRole() {
-        if (TextUtils.equals(getCaller(), V2TIMManager.getInstance().getLoginUser())) {
+    private int parseParticipantRole() {
+        if (TextUtils.equals(caller, V2TIMManager.getInstance().getLoginUser())) {
             return CALL_PARTICIPANT_ROLE_CALLER;
         } else {
             return CALL_PARTICIPANT_ROLE_CALLEE;
@@ -280,7 +326,7 @@ public class CallModel implements Cloneable, Serializable {
 
     public boolean isExcludeFromHistory() {
         if (style == CHAT_CALLING_MESSAGE_APPEARANCE_SIMPLIFY) {
-            return getProtocolType() != CALL_PROTOCOL_TYPE_UNKNOWN && innerMessage.isExcludedFromLastMessage() && innerMessage.isExcludedFromUnreadCount();
+            return protocolType != CALL_PROTOCOL_TYPE_UNKNOWN && innerMessage.isExcludedFromLastMessage() && innerMessage.isExcludedFromUnreadCount();
         } else {
             return false;
         }
@@ -314,10 +360,10 @@ public class CallModel implements Cloneable, Serializable {
         if (isExcludeFromHistory()) {
             return false;
         }
-        return (innerMessage.getLocalCustomInt() == 0) && (getParticipantRole() == CALL_PARTICIPANT_ROLE_CALLEE)
-            && (getParticipantType() == CALL_PARTICIPANT_TYPE_C2C)
-            && (getProtocolType() == CALL_PROTOCOL_TYPE_CANCEL || getProtocolType() == CALL_PROTOCOL_TYPE_TIMEOUT
-                || getProtocolType() == CALL_PROTOCOL_TYPE_LINE_BUSY);
+        return (innerMessage.getLocalCustomInt() == 0) && (participantRole == CALL_PARTICIPANT_ROLE_CALLEE)
+            && (participantType == CALL_PARTICIPANT_TYPE_C2C)
+            && (protocolType == CALL_PROTOCOL_TYPE_CANCEL || protocolType == CALL_PROTOCOL_TYPE_TIMEOUT
+                || protocolType == CALL_PROTOCOL_TYPE_LINE_BUSY);
     }
 
     public String getDisplayName() {
@@ -340,8 +386,7 @@ public class CallModel implements Cloneable, Serializable {
     // ******* Details style ********
     public String getContentForDetailsAppearance() {
         Context context = TUIChatService.getAppContext();
-        int protocolType = getProtocolType();
-        boolean isGroup = (getParticipantType() == CALL_PARTICIPANT_TYPE_GROUP);
+        boolean isGroup = (participantType == CALL_PARTICIPANT_TYPE_GROUP);
 
         if (protocolType == CALL_PROTOCOL_TYPE_UNKNOWN) {
             return context.getString(R.string.invalid_command);
@@ -362,15 +407,13 @@ public class CallModel implements Cloneable, Serializable {
             // Cancel pending call
             content = isGroup ? context.getString(R.string.cancle_group_call) : context.getString(R.string.cancle_call);
         } else if (protocolType == CALL_PROTOCOL_TYPE_HANGUP) {
-            // Hang up
-            int duration = Integer.parseInt(String.valueOf(jsonData.get("call_end")));
             content =
                 isGroup ? context.getString(R.string.stop_group_call) : context.getString(R.string.stop_call_tip) + DateTimeUtil.formatSecondsTo00(duration);
         } else if (protocolType == CALL_PROTOCOL_TYPE_TIMEOUT) {
             // Call timeout
             StringBuilder mutableContent = new StringBuilder();
             if (isGroup) {
-                for (String invitee : signalingInfo.getInviteeList()) {
+                for (String invitee : getParticipants()) {
                     mutableContent.append("\"");
                     mutableContent.append(invitee);
                     mutableContent.append("\"、");
@@ -394,6 +437,31 @@ public class CallModel implements Cloneable, Serializable {
         return content;
     }
 
+    public List<String> getParticipants() {
+        List<String> participants = new ArrayList<>();
+        for (Map.Entry<String, UserBean> entry : participantsMap.entrySet()) {
+            UserBean userBean = entry.getValue();
+            if (userBean != null) {
+                participants.add(userBean.getDisplayString());
+            } else {
+                participants.add(entry.getKey());
+            }
+        }
+        return participants;
+    }
+
+    public List<String> getParticipantIDs() {
+        return signalingInfo.getInviteeList();
+    }
+
+    private int parseDuration() {
+        if (protocolType == CALL_PROTOCOL_TYPE_HANGUP) {
+            // Hang up
+            return (int) Double.parseDouble(String.valueOf(jsonData.get("call_end")));
+        }
+        return 0;
+    }
+
     public int getDirectionForDetailsAppearance() {
         if (innerMessage.isSelf()) {
             return CALL_MESSAGE_DIRECTION_OUTGOING;
@@ -412,22 +480,19 @@ public class CallModel implements Cloneable, Serializable {
             return null;
         }
 
-        int participantType = getParticipantType();
-        int protocolType = getProtocolType();
-        boolean isCaller = (getParticipantRole() == CALL_PARTICIPANT_ROLE_CALLER);
+        boolean isCaller = (participantRole == CALL_PARTICIPANT_ROLE_CALLER);
 
         Context context = TUIChatService.getAppContext();
         String display = null;
         String showName = getDisplayName();
-        if (getParticipantType() == CALL_PARTICIPANT_TYPE_C2C) {
+        if (participantType == CALL_PARTICIPANT_TYPE_C2C) {
             // C2C shown: reject、cancel、hangup、timeout、line_busy
             if (protocolType == CALL_PROTOCOL_TYPE_REJECT) {
                 display = isCaller ? context.getString(R.string.chat_call_reject_caller) : context.getString(R.string.chat_call_reject_callee);
             } else if (protocolType == CALL_PROTOCOL_TYPE_CANCEL) {
                 display = isCaller ? context.getString(R.string.chat_call_cancel_caller) : context.getString(R.string.chat_call_cancel_callee);
             } else if (protocolType == CALL_PROTOCOL_TYPE_HANGUP) {
-                double duration = Double.parseDouble(String.valueOf(jsonData.get("call_end")));
-                display = context.getString(R.string.stop_call_tip) + DateTimeUtil.formatSecondsTo00((int) duration);
+                display = context.getString(R.string.stop_call_tip) + DateTimeUtil.formatSecondsTo00(duration);
             } else if (protocolType == CALL_PROTOCOL_TYPE_TIMEOUT) {
                 display = isCaller ? context.getString(R.string.chat_call_timeout_caller) : context.getString(R.string.chat_call_timeout_callee);
             } else if (protocolType == CALL_PROTOCOL_TYPE_LINE_BUSY) {
@@ -445,7 +510,7 @@ public class CallModel implements Cloneable, Serializable {
             } else {
                 display = context.getString(R.string.invalid_command);
             }
-        } else if (getParticipantType() == CALL_PARTICIPANT_TYPE_GROUP) {
+        } else if (participantType == CALL_PARTICIPANT_TYPE_GROUP) {
             // Group shown: invite、cancel、hangup、timeout、line_busy
             if (protocolType == CALL_PROTOCOL_TYPE_SEND) {
                 display = ("\"" + showName + "\"" + context.getString(R.string.chat_group_call_send));
@@ -455,8 +520,8 @@ public class CallModel implements Cloneable, Serializable {
                 display = context.getString(R.string.chat_group_call_end);
             } else if (protocolType == CALL_PROTOCOL_TYPE_TIMEOUT || protocolType == CALL_PROTOCOL_TYPE_LINE_BUSY) {
                 StringBuilder mutableContent = new StringBuilder();
-                if (getParticipantType() == CALL_PARTICIPANT_TYPE_GROUP) {
-                    for (String invitee : signalingInfo.getInviteeList()) {
+                if (participantType == CALL_PARTICIPANT_TYPE_GROUP) {
+                    for (String invitee : getParticipants()) {
                         mutableContent.append("\"");
                         mutableContent.append(invitee);
                         mutableContent.append("\"、");
@@ -487,7 +552,7 @@ public class CallModel implements Cloneable, Serializable {
     }
 
     public int getDirectionForSimplifyAppearance() {
-        if (getParticipantRole() == CALL_PARTICIPANT_ROLE_CALLER) {
+        if (participantRole == CALL_PARTICIPANT_ROLE_CALLER) {
             return CALL_MESSAGE_DIRECTION_OUTGOING;
         } else {
             return CALL_MESSAGE_DIRECTION_INCOMING;

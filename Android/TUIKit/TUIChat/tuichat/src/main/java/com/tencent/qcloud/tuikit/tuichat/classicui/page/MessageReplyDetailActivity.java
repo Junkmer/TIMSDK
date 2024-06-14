@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -37,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MessageReplyDetailActivity extends BaseLightActivity implements InputView.MessageHandler, IReplyMessageHandler {
-    // 取一个足够大的偏移保证能一次性滚动到最底部
+    
     // Take a large enough offset to scroll to the bottom at one time
     private static final int SCROLL_TO_END_OFFSET = -999999;
 
@@ -58,7 +59,7 @@ public class MessageReplyDetailActivity extends BaseLightActivity implements Inp
         message = (TUIMessageBean) getIntent().getSerializableExtra(TUIChatConstants.MESSAGE_BEAN);
         chatInfo = (ChatInfo) getIntent().getSerializableExtra(TUIChatConstants.CHAT_INFO);
         presenter = new ReplyPresenter();
-        presenter.setMessageId(message.getId());
+        presenter.setMessageBean(message);
         presenter.setChatInfo(chatInfo);
         presenter.setChatEventListener();
         presenter.setReplyHandler(this);
@@ -109,17 +110,13 @@ public class MessageReplyDetailActivity extends BaseLightActivity implements Inp
                     }
                 }
             });
-            presenter.getReactUserBean(message, new IUIKitCallback<Void>() {
+            messageRecyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
                 @Override
-                public void onSuccess(Void data) {
-                    initMessageDetail();
-                }
-
-                @Override
-                public void onError(String module, int errCode, String errMsg) {
-                    initMessageDetail();
+                public void onGlobalLayout() {
+                    messageRecyclerView.requestLayout();
                 }
             });
+            initMessageDetail();
         }
     }
 
@@ -150,13 +147,18 @@ public class MessageReplyDetailActivity extends BaseLightActivity implements Inp
     @Override
     public void updateData(TUIMessageBean messageBean) {
         message = messageBean;
-        initData();
+        initMessageDetail();
+        MessageRepliesBean repliesBean = message.getMessageRepliesBean();
+        if (repliesBean != null) {
+            presenter.findReplyMessages(repliesBean);
+        }
     }
 
     @Override
     public void onRepliesMessageFound(Map<MessageRepliesBean.ReplyBean, TUIMessageBean> messageBeanMap) {
         if (repliesList != null) {
             repliesList.setData(messageBeanMap);
+            scrollToEnd();
         }
     }
 

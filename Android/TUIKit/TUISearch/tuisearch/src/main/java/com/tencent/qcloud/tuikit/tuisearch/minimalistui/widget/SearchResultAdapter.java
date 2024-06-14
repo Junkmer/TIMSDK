@@ -28,9 +28,7 @@ import java.util.regex.Pattern;
 
 public class SearchResultAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> implements ISearchResultAdapter {
     private Context context;
-    private List<String> list = new ArrayList<>();
     private String text;
-    private Animator animator;
 
     private int mViewType = -1;
     private int mShowCount = 0;
@@ -107,7 +105,6 @@ public class SearchResultAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, final int position) {
-        /*如果没有进行搜索操作或者搜索之后点击了删除按钮 我们会在MainActivity中把text置空并传递过来*/
         /*If there is no search operation or the delete button is clicked after the search, we will empty the text in MainActivity and pass it over.*/
 
         ContactViewHolder contactViewHolder = (ContactViewHolder) holder;
@@ -199,11 +196,11 @@ public class SearchResultAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
         public ContactViewHolder(View itemView) {
             super(itemView);
-            mLlItem = (LinearLayout) itemView.findViewById(R.id.ll_item);
-            mUserIconView = (ImageView) itemView.findViewById(R.id.ivAvatar);
-            mTvText = (TextView) itemView.findViewById(R.id.conversation_title);
-            mSubTvText = (TextView) itemView.findViewById(R.id.conversation_sub_title);
-            mSubTvLabelText = (TextView) itemView.findViewById(R.id.conversation_sub_title_label);
+            mLlItem = itemView.findViewById(R.id.ll_item);
+            mUserIconView = itemView.findViewById(R.id.ivAvatar);
+            mTvText = itemView.findViewById(R.id.conversation_title);
+            mSubTvText = itemView.findViewById(R.id.conversation_sub_title);
+            mSubTvLabelText = itemView.findViewById(R.id.conversation_sub_title_label);
         }
     }
 

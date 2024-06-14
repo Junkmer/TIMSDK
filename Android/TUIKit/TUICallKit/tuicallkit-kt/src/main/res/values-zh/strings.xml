@@ -3,11 +3,11 @@
     <string name="tuicallkit_toast_enable_mute">麦克风已关</string>
     <string name="tuicallkit_toast_disable_mute">麦克风已开</string>
     <string name="tuicallkit_toast_speaker">扬声器已开</string>
-    <string name="tuicallkit_toast_use_handset">扬声器已关</string>
+    <string name="tuicallkit_toast_use_earpiece">扬声器已关</string>
     <string name="tuicallkit_toast_user_end">%s 结束通话</string>
-    <string name="tuicallkit_other_party_network_low_quality">对方网络不佳</string>
-    <string name="tuicallkit_self_network_low_quality">己方网络不佳</string>
-    <string name="tuicallkit_toast_switch_camera">切换摄像头</string>
+    <string name="tuicallkit_other_party_network_low_quality">当前通话对方网络不佳</string>
+    <string name="tuicallkit_self_network_low_quality">当前通话你的网络不佳</string>
+    <string name="tuicallkit_toast_switch_camera">翻转</string>
     <string name="tuicallkit_toast_enable_camera">摄像头已开</string>
     <string name="tuicallkit_toast_disable_camera">摄像头已关</string>
     <string name="tuicallkit_waiting_accept">等待对方接受邀请</string>
@@ -16,6 +16,7 @@
     <string name="tuicallkit_text_microphone">麦克风</string>
     <string name="tuicallkit_text_hangup">挂断</string>
     <string name="tuicallkit_text_reject">拒接</string>
+    <string name="tuicallkit_text_line_busy">对方忙</string>
     <string name="tuicallkit_text_speaker">扬声器</string>
     <string name="tuicallkit_text_dialing">接听</string>
     <string name="tuicallkit_text_camera">摄像头</string>
@@ -63,4 +64,14 @@
     <string name="tuicallkit_group_btn_ok">确定</string>
 
     <string name="tuicallkit_error_in_peer_blacklist">发起通话失败，用户在黑名单中，禁止发起！</string>
+    <string name="tuicallkit_error_invalid_login">登录失败,请重新登录</string>
+    <string name="tuicallkit_error_parameter_invalid">参数错误</string>
+    <string name="tuicallkit_error_request_refused">当前状态不支持调用</string>
+    <string name="tuicallkit_error_request_repeated">当前方法正在执行中，请勿重复调用</string>
+    <string name="tuicallkit_error_scene_not_support">当前通话场景，不支持该功能</string>
+    <string name="tuicallkit_join_group_call">加入</string>
+    <string name="tuicallkit_join_group_call_users">%s人正在%s</string>
+
+    <string name="tuicallkit_blur_background">模糊背景</string>
+
 </resources>

@@ -13,7 +13,7 @@
 
 + (NSString *)getRegex_emoji {
     
-    NSString *regex_emoji = @"\\[[a-zA-Z0-9\\/\\u4e00-\\u9fa5]+\\]";  // match emoji
+    NSString *regex_emoji = @"\\[[a-zA-Z0-9_\\u4e00-\\u9fa5]+\\]";  // match emoji
 
     return regex_emoji;
 }
@@ -40,7 +40,6 @@
 
         if (waitingReplaceM.count) {
             /**
-             * 从后往前替换，否则会引起位置问题
              * Replace from back to front, otherwise it will cause positional problems
              */
             for (int i = (int)waitingReplaceM.count - 1; i >= 0; i--) {
@@ -77,7 +76,6 @@
 
         if (waitingReplaceM.count != 0) {
             /**
-             * 从后往前替换，否则会引起位置问题
              * Replace from back to front, otherwise it will cause positional problems
              */
             for (int i = (int)waitingReplaceM.count - 1; i >= 0; i--) {
@@ -93,7 +91,6 @@
 - (NSMutableAttributedString *)getFormatEmojiStringWithFont:(UIFont *)textFont
                                              emojiLocations:(nullable NSMutableArray<NSDictionary<NSValue *, NSAttributedString *> *> *)emojiLocations {
     /**
-     * 先判断 text 是否存在
      * First determine whether the text exists
      */
     if (self.length == 0) {
@@ -101,8 +98,7 @@
         return [[NSMutableAttributedString alloc] initWithString:@""];
     }
     /**
-     * 1. 创建一个可变的属性字符串
-     * Create a mutable attributed string
+     * 1. Create a mutable attributed string
      */
     NSMutableAttributedString *attributeString = [[NSMutableAttributedString alloc] initWithString:self];
     if ([TIMConfig defaultConfig].faceGroups.count == 0) {
@@ -111,8 +107,7 @@
     }
 
     /**
-     * 2. 通过正则表达式来匹配字符串
-     * Match strings with regular expressions
+     * 2.Match strings with regular expressions
      */
     NSError *error = nil;
     static NSRegularExpression *re = nil;
@@ -130,25 +125,19 @@
     TUIFaceGroup *group = [TIMConfig defaultConfig].faceGroups[0];
 
     /**
-     * 3. 获取所有的表情以及位置
-     * - 用来存放字典，字典中存储的是图片和图片对应的位置
-     *
-     * Getting all emotes and locations
+     * 3.Getting all emotes and locations
      * - Used to store the dictionary, the dictionary stores the image and the corresponding location of the image
      */
     NSMutableArray *imageArray = [NSMutableArray arrayWithCapacity:resultArray.count];
     /**
-     * 根据匹配范围来用图片进行相应的替换
      * Replace the image with the corresponding image according to the matching range
      */
     for (NSTextCheckingResult *match in resultArray) {
         /**
-         * 获取数组元素中得到range
          * Get the range in the array element
          */
         NSRange range = [match range];
         /**
-         * 获取原字符串中对应的值
          * Get the corresponding value in the original string
          */
         NSString *subStr = [self substringWithRange:range];
@@ -156,39 +145,32 @@
         for (TUIFaceCellData *face in group.faces) {
             if ([face.name isEqualToString:subStr]) {
                 /**
-                 * face[i][@"png"]就是我们要加载的图片
-                 * face[i][@"png"] is the image we want to load
-                 */
-
-                /**
-                 * - 新建 NSTextAttachment 来存放我们的图片
                  * - Create a new NSTextAttachment to store our image
                  */
-                NSTextAttachment *textAttachment = [[NSTextAttachment alloc] init];
+                TUIEmojiTextAttachment *emojiTextAttachment = [[TUIEmojiTextAttachment alloc] init];
+                emojiTextAttachment.faceCellData = face;
+
+                NSString *localizableFaceName =  face.name;
+
+                // Set tag and image
+                emojiTextAttachment.emojiTag = localizableFaceName;
+                emojiTextAttachment.image = [[TUIImageCache sharedInstance] getFaceFromCache:face.path];
+                
+                // Set emoji size
+                emojiTextAttachment.emojiSize = kTIMDefaultEmojiSize;
+                NSAttributedString *str = [NSAttributedString attributedStringWithAttachment:emojiTextAttachment];
+
                 /**
-                 * - 给附件添加图片
-                 * - Add pictures to attachments
-                 */
-                textAttachment.image = [[TUIImageCache sharedInstance] getFaceFromCache:face.path];
-                /**
-                 * - 调整一下图片的位置,如果你的图片偏上或者偏下，调整一下 bounds 的 y 值即可
-                 * - Adjust the position of the picture. If your picture is up or down, adjust the y value of bounds
-                 */
-                textAttachment.bounds = CGRectMake(0, -(textFont.lineHeight - textFont.pointSize) / 2, textFont.pointSize, textFont.pointSize);
-                /**
-                 * - 把附件转换成可变字符串，用于替换掉源字符串中的表情文字
                  * - Convert attachments to mutable strings to replace emoji text in source strings
                  */
-                NSAttributedString *imageStr = [NSAttributedString attributedStringWithAttachment:textAttachment];
+                NSAttributedString *imageStr = [NSAttributedString attributedStringWithAttachment:emojiTextAttachment];
                 /**
-                 * - 把图片和图片对应的位置存入字典中
                  * - Save the picture and the corresponding position of the picture into the dictionary
                  */
                 NSMutableDictionary *imageDic = [NSMutableDictionary dictionaryWithCapacity:2];
                 [imageDic setObject:imageStr forKey:@"image"];
                 [imageDic setObject:[NSValue valueWithRange:range] forKey:@"range"];
                 /**
-                 * - 把字典存入数组中
                  * - Store dictionary in array
                  */
                 [imageArray addObject:imageDic];
@@ -198,8 +180,7 @@
     }
 
     /**
-     * 4. 从后往前替换，否则会引起位置问题
-     * Replace from back to front, otherwise it will cause positional problems
+     * 4.Replace from back to front, otherwise it will cause positional problems
      */
     NSMutableArray *locations = [NSMutableArray array];
     for (int i = (int)imageArray.count - 1; i >= 0; i--) {
@@ -207,7 +188,6 @@
         [imageArray[i][@"range"] getValue:&originRange];
 
         /**
-         * 存储位置信息
          * Store location information
          */
         NSAttributedString *originStr = [attributeString attributedSubstringFromRange:originRange];
@@ -219,8 +199,7 @@
     }
 
     /**
-     * 5. 获取 emoji 转换后字符串的位置信息
-     * Getting the position information of the converted string of emoji
+     * 5.Getting the position information of the converted string of emoji
      */
     NSInteger offsetLocation = 0;
     for (NSArray *obj in locations) {
@@ -306,7 +285,7 @@
                 emojiTextAttachment.image = [[TUIImageCache sharedInstance] getFaceFromCache:face.path];
 
                 // Set emoji size
-                emojiTextAttachment.emojiSize = kChatDefaultEmojiSize;
+                emojiTextAttachment.emojiSize = kTIMDefaultEmojiSize;
 
                 NSAttributedString *imageStr = [NSAttributedString attributedStringWithAttachment:emojiTextAttachment];
 

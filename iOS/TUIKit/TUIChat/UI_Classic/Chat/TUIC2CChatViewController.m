@@ -18,7 +18,6 @@
 
 @interface TUIC2CChatViewController ()
 
-// 如果满足了一次sendTypingBaseCondation 则当前会话未退出前都使用 sendTypingBaseCondationInVC
 // If one sendTypingBaseCondation is satisfied, sendTypingBaseCondationInVC is used until the current session exits
 
 @property(nonatomic, assign) BOOL sendTypingBaseCondationInVC;
@@ -45,6 +44,15 @@
 }
 
 #pragma mark - Override Methods
+
+- (void)inputControllerDidInputAt:(TUIInputController *)inputController {
+    [super inputControllerDidInputAt:inputController];
+    NSAttributedString *spaceString = [[NSAttributedString alloc]
+        initWithString:@"@"
+            attributes:@{NSFontAttributeName : kTUIInputNoramlFont, NSForegroundColorAttributeName : kTUIInputNormalTextColor}];
+    [self.inputController.inputBar addWordsToInputBar:spaceString];
+}
+
 - (NSString *)forwardTitleWithMyName:(NSString *)nameStr {
     NSString *title = [NSString stringWithFormat:TIMCommonLocalizableString(TUIKitRelayChatHistoryForSomebodyFormat), self.conversationData.title, nameStr];
     return rtlString(title);

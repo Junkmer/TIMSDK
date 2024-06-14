@@ -8,11 +8,11 @@
 
 #import "TUIChatPopContextController.h"
 #import <TIMCommon/TIMDefine.h>
-#import "TUIChatContextEmojiDetailController.h"
 #import "UIImage+ImageEffects.h"
+#import <TUICore/TUICore.h>
 
-@interface TUIChatPopContextController () <TUIChatPopContextRecentEmojiDelegate>
-@property(nonatomic, strong) TUIChatPopContextRecentView *recentView;
+@interface TUIChatPopContextController ()<V2TIMAdvancedMsgListener>
+@property(nonatomic, strong) UIView *recentView;
 @property(nonatomic, strong) UIView *alertContainerView;
 @property(nonatomic, strong) TUIMessageCell *alertView;
 @property(nonatomic, strong) TUIChatPopContextExtionView *extionView;
@@ -40,6 +40,7 @@
 
     _backgroundColor = [UIColor clearColor];
     _backgoundTapDismissEnable = YES;
+    [[V2TIMManager sharedInstance] addAdvancedMsgListener:self];
 }
 
 - (void)viewDidLoad {
@@ -77,21 +78,21 @@
         _viewDidShowHandler(_alertView);
     }
 
-    // 太靠上
+    // 
     // Too far to the top
     CGFloat moveY = 0;
     if (self.recentView.frame.origin.y < NavBar_Height) {
         CGFloat deal = NavBar_Height - self.recentView.frame.origin.y;
         moveY = deal + NavBar_Height + 50;
     }
-    // 太靠右
+    // 
     // Too far to the right
     CGFloat moveX = 0;
     if (self.recentView.frame.origin.x + self.recentView.frame.size.width > self.view.frame.size.width) {
         CGFloat deal = self.recentView.frame.origin.x + self.recentView.frame.size.width - self.view.frame.size.width;
         moveX = deal + 5;
     }
-    // 太靠下
+    // 
     // too far down
     if (self.extionView.frame.origin.y + self.extionView.frame.size.height > self.view.frame.size.height) {
         CGFloat deal = self.extionView.frame.origin.y + self.extionView.frame.size.height - self.view.frame.size.height;
@@ -248,11 +249,16 @@
 }
 
 - (void)configRecentView {
-    _recentView = [[TUIChatPopContextRecentView alloc] init];
-    _recentView.backgroundColor = [UIColor whiteColor];
-    _recentView.delegate = self;
+    _recentView = [[UIView alloc] init];
+    _recentView.backgroundColor = [UIColor clearColor];
     [self.view addSubview:_recentView];
-    _recentView.frame = CGRectMake(_originFrame.origin.x, _originFrame.origin.y - kScale390(8 + 40), kScale390(208), kScale390(40));
+    _recentView.frame = CGRectMake(_originFrame.origin.x,
+                                   _originFrame.origin.y - kScale390(8 + 40),
+                                   MAX(kTIMDefaultEmojiSize.width *8,kScale390(208)),
+                                   kScale390(40));
+    NSDictionary *param = @{TUICore_TUIChatExtension_ChatPopMenuReactRecentView_Delegate : self};
+    [TUICore raiseExtension:TUICore_TUIChatExtension_ChatPopMenuReactRecentView_MinimalistExtensionID parentView:self.recentView param:param];
+
 }
 
 - (void)configExtionView {
@@ -437,32 +443,20 @@
     [self dismissViewControllerAnimated:NO];
 }
 
-#pragma mark - delegate
-
-- (void)popRecentViewClickArrow:(TUIChatPopContextRecentView *)faceView {
-    [self showDetailPage];
-}
-- (void)popRecentViewClickface:(TUIChatPopContextRecentView *)faceView tag:(NSInteger)tag {
-    TUIFaceGroup *group = faceView.faceGroups[0];
-    TUIFaceCellData *face = group.faces[tag];
-    NSString *faceName = face.name;
-    NSLog(@"FaceName:%@", faceName);
-    if (self.reactClickCallback) {
-        self.reactClickCallback(faceName);
+// MARK: V2TIMAdvancedMsgListener
+- (void)onRecvMessageRevoked:(NSString *)msgID operateUser:(V2TIMUserFullInfo *)operateUser reason:(NSString *)reason {
+    
+    if ([msgID isEqualToString:self.alertViewCellData.msgID]) {
+        UIViewController *controller = self;
+        while(controller.presentingViewController != nil){
+            controller = controller.presentingViewController;
+        }
+        [controller dismissViewControllerAnimated:YES completion:^{
+            [self blurDismissViewControllerAnimated:NO completion:nil];
+        }];
     }
+
 }
 
-- (void)showDetailPage {
-    TUIChatContextEmojiDetailController *detailController = [[TUIChatContextEmojiDetailController alloc] init];
-    detailController.modalPresentationStyle = UIModalPresentationCustom;
-    __weak typeof(self) weakSelf = self;
-    detailController.reactClickCallback = ^(NSString *_Nonnull faceName) {
-      __strong typeof(weakSelf) strongSelf = weakSelf;
-      if (strongSelf.reactClickCallback) {
-          strongSelf.reactClickCallback(faceName);
-      }
-    };
-    [self presentViewController:detailController animated:YES completion:nil];
-}
 
 @end

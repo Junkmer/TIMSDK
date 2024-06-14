@@ -8,9 +8,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.tencent.imsdk.v2.V2TIMManager;
 import com.tencent.imsdk.v2.V2TIMMessage;
 import com.tencent.imsdk.v2.V2TIMUserFullInfo;
@@ -19,19 +17,19 @@ import com.tencent.qcloud.tuicore.TUIConstants;
 import com.tencent.qcloud.tuicore.TUICore;
 import com.tencent.qcloud.tuicore.TUIThemeManager;
 import com.tencent.qcloud.tuikit.timcommon.R;
-import com.tencent.qcloud.tuikit.timcommon.bean.MessageReactBean;
 import com.tencent.qcloud.tuikit.timcommon.bean.MessageRepliesBean;
 import com.tencent.qcloud.tuikit.timcommon.bean.TUIMessageBean;
 import com.tencent.qcloud.tuikit.timcommon.component.UnreadCountTextView;
 import com.tencent.qcloud.tuikit.timcommon.component.fragments.BaseFragment;
 import com.tencent.qcloud.tuikit.timcommon.component.gatherimage.UserIconView;
+import com.tencent.qcloud.tuikit.timcommon.interfaces.UserFaceUrlCache;
 import com.tencent.qcloud.tuikit.timcommon.util.DateTimeUtil;
 import com.tencent.qcloud.tuikit.timcommon.util.ScreenUtil;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public abstract class MessageContentHolder extends MessageBaseHolder {
     protected static final int READ_STATUS_UNREAD = 1;
@@ -61,7 +59,7 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
     protected ReplyPreviewView replyPreviewView;
 
     private List<TUIMessageBean> mDataSource = new ArrayList<>();
-    // 是否显示底部的内容。合并转发的消息详情界面不用展示底部内容。
+    
     // Whether to display the bottom content. The merged-forwarded message details activity does not display the bottom content.
     protected boolean isNeedShowBottom = true;
     protected boolean isShowRead = false;
@@ -289,7 +287,7 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
             usernameText.setVisibility(View.GONE);
             messageStatusImage.setVisibility(View.GONE);
             replyPreviewView.setVisibility(View.GONE);
-            reactView.setVisibility(View.GONE);
+            reactionArea.setVisibility(View.GONE);
             chatTimeText.setVisibility(View.GONE);
         }
         if (isMessageDetailMode) {
@@ -311,31 +309,34 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
     }
 
     private void loadAvatar(TUIMessageBean msg) {
-        if (msg.isUseMsgReceiverAvatar()) {
-            String userId = "";
-            if (TextUtils.equals(msg.getSender(), V2TIMManager.getInstance().getLoginUser())) {
-                userId = msg.getUserId();
-            } else {
-                userId = V2TIMManager.getInstance().getLoginUser();
-            }
-            List<String> idList = new ArrayList<>();
-            idList.add(userId);
-            V2TIMManager.getInstance().getUsersInfo(idList, new V2TIMValueCallback<List<V2TIMUserFullInfo>>() {
-                @Override
-                public void onSuccess(List<V2TIMUserFullInfo> v2TIMUserFullInfos) {
-                    V2TIMUserFullInfo userInfo = v2TIMUserFullInfos.get(0);
-                    if (userInfo == null) {
-                        setupAvatar("", msg.isSelf());
-                    } else {
-                        setupAvatar(userInfo.getFaceUrl(), msg.isSelf());
+        if (msg.isUseMsgReceiverAvatar() && mAdapter != null) {
+            String cachedFaceUrl = mAdapter.getUserFaceUrlCache().getCachedFaceUrl(msg.getSender());
+            if (cachedFaceUrl == null) {
+                List<String> idList = new ArrayList<>();
+                idList.add(msg.getSender());
+                V2TIMManager.getInstance().getUsersInfo(idList, new V2TIMValueCallback<List<V2TIMUserFullInfo>>() {
+                    @Override
+                    public void onSuccess(List<V2TIMUserFullInfo> v2TIMUserFullInfos) {
+                        if (v2TIMUserFullInfos == null || v2TIMUserFullInfos.isEmpty()) {
+                            return;
+                        }
+                        V2TIMUserFullInfo userInfo = v2TIMUserFullInfos.get(0);
+                        String faceUrl = userInfo.getFaceUrl();
+                        if (TextUtils.isEmpty(userInfo.getFaceUrl())) {
+                            faceUrl = "";
+                        }
+                        mAdapter.getUserFaceUrlCache().pushFaceUrl(userInfo.getUserID(), faceUrl);
+                        mAdapter.onItemRefresh(msg);
                     }
-                }
 
-                @Override
-                public void onError(int code, String desc) {
-                    setupAvatar("", msg.isSelf());
-                }
-            });
+                    @Override
+                    public void onError(int code, String desc) {
+                        setupAvatar("", msg.isSelf());
+                    }
+                });
+            } else {
+                setupAvatar(cachedFaceUrl, msg.isSelf());
+            }
         } else {
             setupAvatar(msg.getFaceUrl(), msg.isSelf());
         }
@@ -357,12 +358,6 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
         } else {
             rightUserIcon.setIconUrls(null);
             leftUserIcon.setIconUrls(null);
-        }
-
-        if (isShowSelfAvatar) {
-            rightUserIcon.setVisibility(View.VISIBLE);
-        } else {
-            rightUserIcon.setVisibility(View.GONE);
         }
     }
 
@@ -394,13 +389,17 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
         if (isShowAvatar) {
             if (isShowStart) {
                 leftUserIcon.setVisibility(View.VISIBLE);
-                rightUserIcon.setVisibility(View.INVISIBLE);
+                rightUserIcon.setVisibility(View.GONE);
                 if (needChangedBackground) {
                     setMessageBubbleBackground(R.drawable.chat_message_popup_stroke_border_left);
                 }
             } else {
-                leftUserIcon.setVisibility(View.INVISIBLE);
-                rightUserIcon.setVisibility(View.VISIBLE);
+                leftUserIcon.setVisibility(View.GONE);
+                if (isShowSelfAvatar) {
+                    rightUserIcon.setVisibility(View.VISIBLE);
+                } else {
+                    rightUserIcon.setVisibility(View.GONE);
+                }
                 if (needChangedBackground) {
                     setMessageBubbleBackground(R.drawable.chat_message_popup_fill_border_right);
                 }
@@ -416,7 +415,11 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
             horizontalPadding = ScreenUtil.dip2px(16);
             verticalPadding = ScreenUtil.dip2px(2);
             leftUserIcon.setVisibility(View.INVISIBLE);
-            rightUserIcon.setVisibility(View.INVISIBLE);
+            if (isShowSelfAvatar) {
+                rightUserIcon.setVisibility(View.INVISIBLE);
+            } else {
+                rightUserIcon.setVisibility(View.GONE);
+            }
         }
         if (nextMessage != null) {
             rootLayout.setPaddingRelative(horizontalPadding, 0, horizontalPadding, verticalPadding);
@@ -495,6 +498,17 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
         }
     }
 
+    protected void setOnTimeInLineTextClickListener(TUIMessageBean messageBean) {
+        timeInLineTextLayout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (onItemClickListener != null) {
+                    onItemClickListener.onMessageClick(v, messageBean);
+                }
+            }
+        });
+    }
+
     protected void setReadStatus(int readStatus) {
         if (timeInLineTextLayout != null) {
             int statusIconResID = 0;
@@ -561,36 +575,11 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
     }
 
     private void setReactContent(TUIMessageBean messageBean) {
-        MessageReactBean messageReactBean = messageBean.getMessageReactBean();
-        if (messageReactBean != null && messageReactBean.getReactSize() > 0) {
-            reactView.setVisibility(View.VISIBLE);
-            reactView.setData(messageReactBean);
-            reactView.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View v) {
-                    if (onItemClickListener != null) {
-                        onItemClickListener.onMessageLongClick(msgArea, messageBean);
-                    }
-                    return true;
-                }
-            });
-
-            reactView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (onItemClickListener != null) {
-                        onItemClickListener.onReactOnClick(null, messageBean);
-                    }
-                }
-            });
-
-            if (isForwardMode) {
-                reactView.setOnLongClickListener(null);
-            }
-        } else {
-            reactView.setVisibility(View.GONE);
-            reactView.setOnLongClickListener(null);
-        }
+        Map<String, Object> param = new HashMap<>();
+        param.put(TUIConstants.TUIChat.Extension.MessageReactPreviewExtension.MESSAGE, messageBean);
+        param.put(TUIConstants.TUIChat.Extension.MessageReactPreviewExtension.VIEW_TYPE,
+            TUIConstants.TUIChat.Extension.MessageReactPreviewExtension.VIEW_TYPE_MINIMALIST);
+        TUICore.raiseExtension(TUIConstants.TUIChat.Extension.MessageReactPreviewExtension.EXTENSION_ID, reactionArea, param);
     }
 
     private void processReadStatus(TUIMessageBean msg) {
@@ -616,18 +605,14 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
 
     private void setShowReadStatusClickListener(TUIMessageBean messageBean) {
         if (timeInLineTextLayout != null) {
-            if (messageBean.isSelf()) {
-                timeInLineTextLayout.setOnStatusAreaClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (onItemClickListener != null) {
-                            onItemClickListener.onMessageReadStatusClick(v, messageBean);
-                        }
+            timeInLineTextLayout.setOnStatusAreaClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (onItemClickListener != null) {
+                        onItemClickListener.onMessageReadStatusClick(v, messageBean);
                     }
-                });
-            } else {
-                timeInLineTextLayout.setOnStatusAreaClickListener(null);
-            }
+                }
+            });
             timeInLineTextLayout.setOnStatusAreaLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
@@ -652,7 +637,9 @@ public abstract class MessageContentHolder extends MessageBaseHolder {
 
     public abstract void layoutVariableViews(final TUIMessageBean msg, final int position);
 
-    public void onRecycled() {}
+    public void onRecycled() {
+        super.onRecycled();
+    }
 
     public void setNeedShowBottom(boolean needShowBottom) {
         isNeedShowBottom = needShowBottom;

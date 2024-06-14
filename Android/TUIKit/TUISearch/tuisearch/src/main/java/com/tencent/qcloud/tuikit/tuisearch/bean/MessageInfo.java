@@ -78,17 +78,7 @@ public class MessageInfo implements Serializable {
         this.id = id;
     }
 
-    public long getUniqueId() {
-        return uniqueId;
-    }
-
-    public void setUniqueId(long uniqueId) {
-        this.uniqueId = uniqueId;
-    }
-
     /**
-     * 获取消息发送方 ID
-     *
      * Get message sender ID
      *
      * @return
@@ -98,8 +88,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置消息发送方 ID
-     *
      * Set message sender ID
      *
      * @param fromUser
@@ -109,8 +97,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 获取群名片
-     *
      * Get Group NameCard
      *
      * @return
@@ -120,8 +106,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置群名片
-     *
      * Set Group NameCard
      *
      * @param groupNameCard
@@ -131,8 +115,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 获取消息类型
-     *
      * Get message type
      *
      * @return
@@ -142,8 +124,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置消息类型
-     *
      * Set message type
      *
      * @param msgType
@@ -153,8 +133,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 获取消息发送状态
-     *
      * Get Message Status
      *
      * @return
@@ -164,8 +142,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置消息发送状态
-     *
      * Set Message Status
      *
      * @param status
@@ -183,8 +159,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 获取消息是否为登录用户发送
-     *
      * Get whether the message was sent for yourself
      *
      * @return
@@ -194,8 +168,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置消息是否是登录用户发送
-     *
      * Set whether the message was sent for yourself
      *
      * @param self
@@ -205,30 +177,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 获取消息是否已读
-     *
-     * Get whether the message has been read
-     *
-     * @return
-     */
-    public boolean isRead() {
-        return read;
-    }
-
-    /**
-     * 设置消息已读
-     *
-     * Set whether the message has been read
-     *
-     * @param read
-     */
-    public void setRead(boolean read) {
-        this.read = read;
-    }
-
-    /**
-     * 获取消息是否为群消息
-     *
      * Get whether the message is a group message
      *
      * @return
@@ -238,8 +186,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置消息是否为群消息
-     *
      * Set whether the message is a group message
      *
      * @param group
@@ -249,34 +195,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 获取多媒体消息的数据源
-     *
-     * Get the data source of the multimedia message
-     *
-     * @return
-     */
-    public String getDataUri() {
-        return dataUri;
-    }
-
-    /**
-     * 获取多媒体消息的数据源
-     *
-     * Get the data source of the multimedia message
-     *
-     * @return
-     */
-    public Uri getDataUriObj() {
-        if (!TextUtils.isEmpty(dataUri)) {
-            return Uri.parse(dataUri);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * 设置多媒体消息的数据源
-     *
      * Set the data source of the multimedia message
      *
      * @param dataUri
@@ -288,73 +206,12 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置多媒体消息的数据源
-     *
-     * Set the data source of the multimedia message
-     *
-     * @param dataUri
-     */
-    public void setDataUri(String dataUri) {
-        this.dataUri = dataUri;
-    }
-
-    /**
-     * 获取多媒体消息的保存路径
-     *
-     * Get the save path of multimedia messages
-     *
-     * @return
-     */
-    public String getDataPath() {
-        return dataPath;
-    }
-
-    /**
-     * 设置多媒体消息的保存路径
-     *
      * Set the save path of multimedia messages
      *
      * @param dataPath
      */
     public void setDataPath(String dataPath) {
         this.dataPath = dataPath;
-    }
-
-    public int getCustomInt() {
-        if (timMessage == null) {
-            return 0;
-        }
-        return timMessage.getLocalCustomInt();
-    }
-
-    public void setCustomInt(int value) {
-        if (timMessage == null) {
-            return;
-        }
-        timMessage.setLocalCustomInt(value);
-    }
-
-    public boolean checkEquals(String msgID) {
-        if (TextUtils.isEmpty(msgID)) {
-            return false;
-        }
-        return timMessage.getMsgID().equals(msgID);
-    }
-
-    public boolean remove() {
-        if (timMessage == null) {
-            return false;
-        }
-        V2TIMManager.getMessageManager().deleteMessageFromLocalStorage(timMessage, new V2TIMCallback() {
-            @Override
-            public void onError(int code, String desc) {
-                TUISearchLog.e(TAG, "deleteMessageFromLocalStorage error code = " + code + ", desc = " + desc);
-            }
-
-            @Override
-            public void onSuccess() {}
-        });
-        return true;
     }
 
     public V2TIMMessage getTimMessage() {
@@ -366,8 +223,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 非文字消息在会话列表时展示的文字说明，比如照片在会话列表展示为“[图片]”
-     *
      * Text description for non-text messages in the conversation list
      *
      * @return
@@ -377,8 +232,6 @@ public class MessageInfo implements Serializable {
     }
 
     /**
-     * 设置非文字消息在会话列表时展示的文字说明，比如照片在会话列表展示为“[图片]”
-     *
      * Set text description for non-text messages in the conversation list
      *
      * @param extra

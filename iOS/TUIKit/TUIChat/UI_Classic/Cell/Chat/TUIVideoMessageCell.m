@@ -142,13 +142,13 @@
     if (data.direction == MsgDirectionIncoming) {
         [[[RACObserve(data, thumbProgress) takeUntil:self.rac_prepareForReuseSignal] distinctUntilChanged] subscribeNext:^(NSNumber *x) {
           @strongify(self);
-          // 封面下载的进度回调
+          // Cover download progress callback
           int progress = [x intValue];
           self.progress.text = [NSString stringWithFormat:@"%d%%", progress];
           self.progress.hidden = (progress >= 100 || progress == 0);
           self.animateCircleView.progress = progress;
           if (progress >= 100 || progress == 0) {
-              // 封面进度100时展示下载视频图标
+              // The progress of cover download is called back and the download video icon is displayed when the cover progress is 100.
               if ([data isVideoExist]) {
                   self.play.hidden = NO;
               } else {
@@ -160,7 +160,7 @@
           }
         }];
 
-        // 视频资源下载的进度回调
+        // Video resource download progress callback
         [[[RACObserve(data, videoProgress) takeUntil:self.rac_prepareForReuseSignal] distinctUntilChanged] subscribeNext:^(NSNumber *x) {
           @strongify(self);
           int progress = [x intValue];
@@ -198,13 +198,13 @@
         } else {
             [[[RACObserve(data, thumbProgress) takeUntil:self.rac_prepareForReuseSignal] distinctUntilChanged] subscribeNext:^(NSNumber *x) {
               @strongify(self);
-              // 封面下载的进度回调
+              // Cover download progress callback
               int progress = [x intValue];
               self.progress.text = [NSString stringWithFormat:@"%d%%", progress];
               self.progress.hidden = (progress >= 100 || progress == 0);
               self.animateCircleView.progress = progress;
               if (progress >= 100 || progress == 0) {
-                  // 封面进度100时展示下载视频图标
+                  // The download video icon is displayed when the cover progress reaches 100
                   if ([data isVideoExist]) {
                       self.play.hidden = NO;
                   } else {
@@ -216,7 +216,7 @@
               }
             }];
 
-            // 视频资源下载的进度回调
+            // Video resource download progress callback
             [[[RACObserve(data, videoProgress) takeUntil:self.rac_prepareForReuseSignal] distinctUntilChanged] subscribeNext:^(NSNumber *x) {
               @strongify(self);
               int progress = [x intValue];
@@ -250,30 +250,22 @@
 - (void)updateConstraints {
 
     [super updateConstraints];
-    if (self.messageData.messageModifyReactsSize.height > 0) {
-        if (self.tagView) {
-            CGFloat topMargin = 10;
-            CGFloat tagViewTopMargin = 6;
-            CGFloat thumbHeight = self.bubbleView.mm_h - topMargin - self.messageData.messageModifyReactsSize.height - tagViewTopMargin;
-            [self.thumb mas_remakeConstraints:^(MASConstraintMaker *make) {
-                make.height.mas_equalTo(thumbHeight);
-                make.width.mas_equalTo(self.bubbleView).multipliedBy(0.7);
-                make.centerX.mas_equalTo(self.bubbleView);
-                make.top.mas_equalTo(self.container).mas_offset(topMargin);
-            }];
-            [self.tagView mas_remakeConstraints:^(MASConstraintMaker *make) {
-                make.height.mas_equalTo(self.messageData.messageModifyReactsSize.height);
-                make.width.mas_equalTo(self.bubbleView);
-                make.trailing.mas_equalTo(self.bubbleView.mas_trailing);
-                make.bottom.mas_equalTo(self.bubbleView.mas_bottom);
-            }];
-            [self.duration mas_remakeConstraints:^(MASConstraintMaker *make) {
-                make.trailing.mas_equalTo(self.thumb.mas_trailing).mas_offset(-2);
-                make.width.mas_greaterThanOrEqualTo(20);
-                make.height.mas_equalTo(20);
-                make.bottom.mas_equalTo(self.thumb.mas_bottom);
-            }];
-        }
+    if (self.messageData.messageContainerAppendSize.height > 0) {
+        CGFloat topMargin = 10;
+        CGFloat tagViewTopMargin = 6;
+        CGFloat thumbHeight = self.bubbleView.mm_h - topMargin - self.messageData.messageContainerAppendSize.height - tagViewTopMargin;
+        [self.thumb mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.height.mas_equalTo(thumbHeight);
+            make.width.mas_equalTo(self.bubbleView).multipliedBy(0.7);
+            make.centerX.mas_equalTo(self.bubbleView);
+            make.top.mas_equalTo(self.container).mas_offset(topMargin);
+        }];
+        [self.duration mas_remakeConstraints:^(MASConstraintMaker *make) {
+            make.trailing.mas_equalTo(self.thumb.mas_trailing).mas_offset(-2);
+            make.width.mas_greaterThanOrEqualTo(20);
+            make.height.mas_equalTo(20);
+            make.bottom.mas_equalTo(self.thumb.mas_bottom);
+        }];
     } else {
         [self.thumb mas_remakeConstraints:^(MASConstraintMaker *make) {
             make.top.mas_equalTo(self.bubbleView).mas_offset(self.messageData.cellLayout.bubbleInsets.top);
@@ -301,13 +293,12 @@
         [self.securityStrikeView mas_remakeConstraints:^(MASConstraintMaker *make) {
             make.top.mas_equalTo(self.thumb.mas_bottom);
             make.width.mas_equalTo(self.bubbleView);
-            if(self.tagView) {
-                make.bottom.mas_equalTo(self.container).mas_offset(-self.messageData.messageModifyReactsSize.height);
+            if(self.messageData.messageContainerAppendSize.height>0) {
+                make.bottom.mas_equalTo(self.container).mas_offset(-self.messageData.messageContainerAppendSize.height);
             }
             else {
                 make.bottom.mas_equalTo(self.container).mas_offset(-12);
             }
-            
         }];
     }
 

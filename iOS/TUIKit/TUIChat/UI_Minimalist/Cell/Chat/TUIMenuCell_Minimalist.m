@@ -3,7 +3,7 @@
 //  UIKit
 //
 //  Created by kennethmiao on 2018/9/20.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 
 #import "TUIMenuCell_Minimalist.h"
@@ -21,7 +21,7 @@
 }
 
 - (void)setupViews {
-    self.backgroundColor = [UIColor whiteColor];
+    self.backgroundColor = TUIChatDynamicColor(@"chat_controller_bg_color", @"#EBF0F6");
     _menu = [[UIImageView alloc] init];
     _menu.backgroundColor = [UIColor clearColor];
     [self addSubview:_menu];
@@ -34,10 +34,9 @@
     // set data
     _menu.image = [[TUIImageCache sharedInstance] getFaceFromCache:data.path];
     if (data.isSelected) {
-        _menu.layer.borderWidth = 1;
-        _menu.layer.borderColor = RGBA(20, 122, 255, 1).CGColor;
+        self.backgroundColor = TUIChatDynamicColor(@"chat_face_menu_select_color", @"#FFFFFF");
     } else {
-        _menu.layer.borderWidth = 0;
+        self.backgroundColor = TUIChatDynamicColor(@"chat_input_controller_bg_color", @"#EBF0F6");
     }
     // update layout
     CGSize size = self.frame.size;

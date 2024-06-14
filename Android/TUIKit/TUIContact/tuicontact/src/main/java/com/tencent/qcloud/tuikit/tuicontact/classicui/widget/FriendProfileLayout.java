@@ -46,8 +46,6 @@ import java.util.Map;
 public class FriendProfileLayout extends LinearLayout implements View.OnClickListener, IFriendProfileLayout {
     private static final String TAG = FriendProfileLayout.class.getSimpleName();
 
-    private static final int CHANGE_REMARK_CODE = 200;
-
     private TitleBarLayout mTitleBar;
     private ImageView mHeadImageView;
     private TextView mNickNameView;
@@ -62,16 +60,17 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
     private LineControllerView addFriendRemarkLv;
     private LineControllerView addFriendGroupLv;
     private LineControllerView mChatBackground;
-    private Button deleteFriendBtn;
-    private Button clearMessageBtn;
+    private TextView deleteFriendBtn;
+    private TextView clearMessageBtn;
 
-    private Button agreeBtn;
+    private TextView agreeBtn;
 
     private ViewGroup extensionListView;
+    private ViewGroup warningExtensionListView;
 
-    private Button addFriendSendBtn;
-    private Button acceptFriendBtn;
-    private Button refuseFriendBtn;
+    private TextView addFriendSendBtn;
+    private TextView acceptFriendBtn;
+    private TextView refuseFriendBtn;
     private View addFriendArea;
     private EditText addWordingEditText;
     private View friendApplicationVerifyArea;
@@ -82,8 +81,6 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
     private OnButtonClickListener mListener;
     private String mId;
     private String mNickname;
-    private String mRemark;
-    private String mAddWords;
     private boolean isFriend;
     private boolean isGroup = false;
 
@@ -138,6 +135,7 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
         agreeBtn = findViewById(R.id.agree_button);
 
         extensionListView = findViewById(R.id.extension_list);
+        warningExtensionListView = findViewById(R.id.warning_extension_list);
 
         addFriendArea = findViewById(R.id.add_friend_verify_area);
         addWordingEditText = findViewById(R.id.add_wording_edit);
@@ -171,7 +169,7 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
         extensionListView.removeAllViews();
         for (TUIExtensionInfo extensionInfo : extensionInfoList) {
             View itemView = LayoutInflater.from(getContext()).inflate(R.layout.contact_friend_profile_item_layout, null);
-            Button itemButton = itemView.findViewById(R.id.item_button);
+            TextView itemButton = itemView.findViewById(R.id.item_button);
             itemButton.setText(extensionInfo.getText());
             itemButton.setOnClickListener(new OnClickListener() {
                 @Override
@@ -182,6 +180,24 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
                 }
             });
             extensionListView.addView(itemView);
+        }
+
+        List<TUIExtensionInfo> warningExtensionList = TUICore.getExtensionList(TUIConstants.TUIContact.Extension.FriendProfileWarningButton.EXTENSION_ID, null);
+        Collections.sort(warningExtensionList);
+        warningExtensionListView.removeAllViews();
+        for (TUIExtensionInfo extensionInfo : warningExtensionList) {
+            View itemView = LayoutInflater.from(getContext()).inflate(R.layout.contact_friend_profile_warning_item_layout, null);
+            TextView itemButton = itemView.findViewById(R.id.item_button);
+            itemButton.setText(extensionInfo.getText());
+            itemButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (extensionInfo.getExtensionListener() != null) {
+                        extensionInfo.getExtensionListener().onClicked(null);
+                    }
+                }
+            });
+            warningExtensionListView.addView(itemView);
         }
     }
 
@@ -505,13 +521,6 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
         });
     }
 
-    private void chat() {
-        if (mListener != null || mContactInfo != null) {
-            mListener.onStartConversationClick(mContactInfo);
-        }
-        ((Activity) getContext()).finish();
-    }
-
     @Override
     public void onClick(View v) {
         if (v == deleteFriendBtn) {
@@ -635,7 +644,6 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
     }
 
     public interface OnButtonClickListener {
-        void onStartConversationClick(ContactItemBean info);
 
         void onDeleteFriendClick(String id);
 

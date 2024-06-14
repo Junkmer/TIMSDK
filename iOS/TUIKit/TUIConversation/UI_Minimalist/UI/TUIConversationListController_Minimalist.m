@@ -466,7 +466,6 @@ static NSString *kConversationCell_Minimalist_ReuseId = @"kConversationCell_Mini
                     desc = TIMCommonLocalizableString(TUIKitMessageTipsOthersRecallMessage);
                 } else if (msg.groupID.length > 0) {
                     /**
-                     * 对于群组消息的名称显示，优先显示群名片，昵称优先级其次，用户ID优先级最低。
                      * For the name display of group messages, the group business card is displayed first, the nickname has the second priority, and the user ID
                      * has the lowest priority.
                      */
@@ -636,10 +635,10 @@ static NSString *kConversationCell_Minimalist_ReuseId = @"kConversationCell_Mini
     BOOL read = (cellData.isMarkAsUnread || cellData.unreadCount > 0);
     markAsReadAction.backgroundColor = read ? RGB(37, 104, 240) : RGB(102, 102, 102);
     NSString *markAsReadImageName = read ? @"icon_conversation_swipe_read" : @"icon_conversation_swipe_unread";
-    if ([language containsString:@"zh-"]) {
+    if ([language tui_containsString:@"zh-"]) {
         markAsReadImageName = [markAsReadImageName stringByAppendingString:@"_zh"];
     }
-    else if ([language containsString:@"ar"]) {
+    else if ([language tui_containsString:@"ar"]) {
         markAsReadImageName = [markAsReadImageName stringByAppendingString:@"_ar"];
     }
     markAsReadAction.image =
@@ -669,10 +668,10 @@ static NSString *kConversationCell_Minimalist_ReuseId = @"kConversationCell_Mini
                           }];
     moreAction.backgroundColor = RGB(0, 0, 0);
     NSString *moreImageName =  @"icon_conversation_swipe_more";
-    if ([language containsString:@"zh-"]) {
+    if ([language tui_containsString:@"zh-"]) {
         moreImageName = [moreImageName stringByAppendingString:@"_zh"];
     }
-    else if ([language containsString:@"ar"]) {
+    else if ([language tui_containsString:@"ar"]) {
         moreImageName = [moreImageName stringByAppendingString:@"_ar"];
     }
     moreAction.image = TUIDynamicImage(@"", TUIThemeModuleConversation_Minimalist, [UIImage imageNamed:TUIConversationImagePath_Minimalist(moreImageName)]);
@@ -836,7 +835,6 @@ static NSString *kConversationCell_Minimalist_ReuseId = @"kConversationCell_Mini
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    // 通过开启或关闭这个开关，控制最后一行分割线的长度
     // Turn on or off the length of the last line of dividers by controlling this switch
     BOOL needLastLineFromZeroToMax = NO;
     if ([cell respondsToSelector:@selector(setSeparatorInset:)]) {

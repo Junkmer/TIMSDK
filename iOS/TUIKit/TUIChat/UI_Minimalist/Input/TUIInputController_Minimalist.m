@@ -3,7 +3,7 @@
 //  UIKit
 //
 //  Created by kennethmiao on 2018/9/18.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 
 #import "TUIInputController_Minimalist.h"
@@ -23,6 +23,8 @@
 #import "TUIMessageDataProvider.h"
 #import "TUITextMessageCell_Minimalist.h"
 #import "TUIVoiceMessageCell_Minimalist.h"
+#import <TIMCommon/TIMCommonMediator.h>
+#import <TIMCommon/TUIEmojiMeditorProtocol.h>
 
 @interface TUIInputController_Minimalist () <TUIInputBarDelegate_Minimalist, TUIMenuViewDelegate_Minimalist, TUIFaceViewDelegate>
 @property(nonatomic, assign) InputStatus status;
@@ -98,8 +100,8 @@
 }
 
 - (void)hideFaceAnimation {
-    self.faceView.hidden = NO;
-    self.faceView.alpha = 1.0;
+    self.faceSegementScrollView.hidden = NO;
+    self.faceSegementScrollView.alpha = 1.0;
     self.menuView.hidden = NO;
     self.menuView.alpha = 1.0;
     __weak typeof(self) ws = self;
@@ -107,45 +109,60 @@
         delay:0
         options:UIViewAnimationOptionCurveEaseOut
         animations:^{
-          ws.faceView.alpha = 0.0;
+          ws.faceSegementScrollView.alpha = 0.0;
           ws.menuView.alpha = 0.0;
         }
         completion:^(BOOL finished) {
-          ws.faceView.hidden = YES;
-          ws.faceView.alpha = 1.0;
+          ws.faceSegementScrollView.hidden = YES;
+          ws.faceSegementScrollView.alpha = 1.0;
           ws.menuView.hidden = YES;
           ws.menuView.alpha = 1.0;
           [ws.menuView removeFromSuperview];
-          [ws.faceView removeFromSuperview];
+          [ws.faceSegementScrollView removeFromSuperview];
+          ws.view.backgroundColor = RGBA(255, 255, 255, 1);
         }];
 }
 
 - (void)showFaceAnimation {
+    [self.view addSubview:self.faceSegementScrollView];
     [self.view addSubview:self.menuView];
-    [self.view addSubview:self.faceView];
-
-    self.menuView.hidden = NO;
-    CGRect frame = self.menuView.frame;
-    frame.origin.y = Screen_Height;
-    self.menuView.frame = frame;
-
-    self.faceView.hidden = NO;
-    frame = self.faceView.frame;
-    frame.origin.y = self.menuView.mm_maxY;
-    self.faceView.frame = frame;
-
     __weak typeof(self) ws = self;
+    [self.faceSegementScrollView updateRecentView];
+    [self.faceSegementScrollView setAllFloatCtrlViewAllowSendSwitch:(self.inputBar.inputTextView.text.length > 0)?YES:NO];
+    self.faceSegementScrollView.onScrollCallback = ^(NSInteger indexPage) {
+        [ws.menuView scrollToMenuIndex:indexPage];
+    };
+    self.inputBar.inputBarTextChanged = ^(UITextView *textview) {
+        if(textview.text.length > 0) {
+            [ws.faceSegementScrollView setAllFloatCtrlViewAllowSendSwitch:YES];
+        }
+        else {
+            [ws.faceSegementScrollView setAllFloatCtrlViewAllowSendSwitch:NO];
+        }
+    };
+    
+    
+    self.faceSegementScrollView.hidden = NO;
+    CGRect frame = self.menuView.frame;
+    frame.origin.y = self.view.window.frame.size.height;
+    self.menuView.frame = frame;
+    self.menuView.hidden = NO;
+    frame = self.faceSegementScrollView.frame;
+    frame.origin.y = self.menuView.frame.origin.y + self.menuView.frame.size.height;
+    self.faceSegementScrollView.frame = frame;
+
     [UIView animateWithDuration:0.3
                           delay:0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
                        CGRect newFrame = ws.menuView.frame;
-                       newFrame.origin.y = ws.inputBar.mm_maxY;
+                       newFrame.origin.y = CGRectGetMaxY(ws.inputBar.frame);  // ws.inputBar.frame.origin.y + ws.inputBar.frame.size.height;
                        ws.menuView.frame = newFrame;
 
-                       newFrame = ws.faceView.frame;
-                       newFrame.origin.y = ws.menuView.mm_maxY;
-                       ws.faceView.frame = newFrame;
+                       newFrame = ws.faceSegementScrollView.frame;
+                       newFrame.origin.y = ws.menuView.frame.origin.y + ws.menuView.frame.size.height;
+                       ws.faceSegementScrollView.frame = newFrame;
+                       ws.view.backgroundColor = TUIChatDynamicColor(@"chat_input_controller_bg_color", @"#EBF0F6");
                      }
                      completion:nil];
 }
@@ -173,11 +190,12 @@
     if ([TIMConfig defaultConfig].faceGroups.count == 0) {
         return;
     }
+    
     [_inputBar.inputTextView resignFirstResponder];
     _status = Input_Status_Input_Face;
     if (_delegate && [_delegate respondsToSelector:@selector(inputController:didChangeHeight:)]) {
         [_delegate inputController:self
-                   didChangeHeight:CGRectGetMaxY(_inputBar.frame) + self.menuView.frame.size.height + self.faceView.frame.size.height + Bottom_SafeHeight];
+                   didChangeHeight:CGRectGetMaxY(_inputBar.frame) + self.faceSegementScrollView.frame.size.height + self.menuView.frame.size.height ];
     }
     [self showFaceAnimation];
 }
@@ -206,7 +224,6 @@
 
 - (void)inputBar:(TUIInputBar_Minimalist *)textView didSendText:(NSString *)text {
     /**
-     * 表情国际化 --> 恢复成实际的中文 key
      * Emoticon internationalization --> restore to actual Chinese key
      */
     NSString *content = [text getInternationalStringWithfaceContent];
@@ -252,9 +269,6 @@
                 [cloudResultDic addEntriesFromDictionary:originDic];
             }
             /**
-             * 接受 parent 里的数据，但是不能保存 messageReplies\messageReact，因为根消息话题创建者才有这个字段。
-             * 当前发送的新消息里不能存 messageReplies\messageReact
-             *
              * Accept the data in the parent, but cannot save messageReplies\messageReact, because the root message topic creator has this field.
              * messageReplies\messageReact cannot be stored in the new message currently sent
              */
@@ -268,7 +282,6 @@
         }
         if (!IS_NOT_EMPTY_NSSTRING(messageRootID)) {
             /**
-             * 如果源消息没有 messageRootID， 则需要将当前源消息的 msgID 作为 root
              * If the original message does not have a messageRootID, you need to use the msgID of the current original message as root
              */
             if (IS_NOT_EMPTY_NSSTRING(parentMsg.msgID)) {
@@ -342,8 +355,9 @@
 - (void)inputBar:(TUIInputBar_Minimalist *)textView didSendVoice:(NSString *)path {
     NSURL *url = [NSURL fileURLWithPath:path];
     AVURLAsset *audioAsset = [AVURLAsset URLAssetWithURL:url options:nil];
-    int duration = (int)CMTimeGetSeconds(audioAsset.duration);
-    V2TIMMessage *message = [[V2TIMManager sharedInstance] createSoundMessage:path duration:duration];
+    float duration = (float)CMTimeGetSeconds(audioAsset.duration);
+    int formatDuration = duration > 59 ? 60 : duration + 1 ;
+    V2TIMMessage *message = [[V2TIMManager sharedInstance] createSoundMessage:path duration:formatDuration];
     if (message && _delegate && [_delegate respondsToSelector:@selector(inputController:didSendMessage:)]) {
         [_delegate inputController:self didSendMessage:message];
     }
@@ -492,7 +506,7 @@
 }
 
 - (void)menuView:(TUIMenuView_Minimalist *)menuView didSelectItemAtIndex:(NSInteger)index {
-    [self.faceView scrollToFaceGroupIndex:index];
+    [self.faceSegementScrollView  setPageIndex:index];
 }
 
 - (void)menuViewDidSendMessage:(TUIMenuView_Minimalist *)menuView {
@@ -501,7 +515,6 @@
         return;
     }
     /**
-     * 表情国际化 --> 恢复成实际的中文 key
      * Emoticon internationalization --> restore to actual Chinese key
      */
     NSString *content = [text getInternationalStringWithfaceContent];
@@ -521,12 +534,16 @@
 - (void)faceViewDidBackDelete:(TUIFaceView *)faceView {
     [_inputBar backDelete];
 }
+- (void)faceViewClickSendMessageBtn {
+    [self menuViewDidSendMessage:self.menuView];
+}
 
 - (void)faceView:(TUIFaceView *)faceView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    TUIFaceGroup *group = [TIMConfig defaultConfig].faceGroups[indexPath.section];
+    TUIFaceGroup *group = faceView.faceGroups[indexPath.section];
     TUIFaceCellData *face = group.faces[indexPath.row];
-    if (indexPath.section == 0) {
+    if (group.isNeedAddInInputBar) {
         [_inputBar addEmoji:face];
+        [self updateRecentMenuQueue:face.name];
     } else {
         if (face.name) {
             V2TIMMessage *message = [[V2TIMManager sharedInstance] createFaceMessage:group.groupIndex data:[face.name dataUsingEncoding:NSUTF8StringEncoding]];
@@ -536,22 +553,26 @@
         }
     }
 }
+- (void)updateRecentMenuQueue:(NSString *)faceName {
+    id<TUIEmojiMeditorProtocol> service = [[TIMCommonMediator share] getObject:@protocol(TUIEmojiMeditorProtocol)];
+    return [service updateRecentMenuQueue:faceName];
+}
 
 #pragma mark - lazy load
-- (TUIFaceView *)faceView {
-    if (!_faceView) {
-        _faceView = [[TUIFaceView alloc] initWithFrame:CGRectMake(0, _menuView.mm_maxY, self.view.mm_w, TFaceView_Height)];
-        _faceView.backgroundColor = [UIColor whiteColor];
-        _faceView.faceCollectionView.backgroundColor = _faceView.backgroundColor;
-        _faceView.delegate = self;
-        [_faceView setData:[TIMConfig defaultConfig].faceGroups];
+- (TUIFaceSegementScrollView *)faceSegementScrollView {
+    if(!_faceSegementScrollView) {
+        _faceSegementScrollView = [[TUIFaceSegementScrollView alloc]
+            initWithFrame:CGRectMake(0, 
+                                     _inputBar.frame.origin.y + _inputBar.frame.size.height, self.view.frame.size.width,
+                                     TFaceView_Height)];
+        [_faceSegementScrollView setItems:[TIMConfig defaultConfig].faceGroups delegate:self];
     }
-    return _faceView;
+    return _faceSegementScrollView;
 }
 
 - (TUIMenuView_Minimalist *)menuView {
     if (!_menuView) {
-        _menuView = [[TUIMenuView_Minimalist alloc] initWithFrame:CGRectMake(0, _inputBar.mm_maxY, self.view.mm_w, TMenuView_Menu_Height)];
+        _menuView = [[TUIMenuView_Minimalist alloc] initWithFrame:CGRectMake(16, _inputBar.mm_maxY, self.view.frame.size.width - 32, TMenuView_Menu_Height)];
         _menuView.delegate = self;
 
         TIMConfig *config = [TIMConfig defaultConfig];

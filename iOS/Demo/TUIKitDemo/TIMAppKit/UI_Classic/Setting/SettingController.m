@@ -3,7 +3,7 @@
 //  TUIKitDemo
 //
 //  Created by kennethmiao on 2018/10/19.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 #import "SettingController.h"
 #import <TIMCommon/TIMCommonModel.h>
@@ -65,6 +65,7 @@ NSString *kEnableCallsRecord = @"TUIKitDemo_EnableCallsRecord";
     [self.parentViewController.view addGestureRecognizer:tap];
 
     TUISettingController *vc = [[TUISettingController alloc] init];
+    vc.lastLoginUser = self.lastLoginUser;
     vc.delegate = self;
     vc.aboutIMCellText = TIMCommonLocalizableString(TIMAppMeAbout);
     vc.showPersonalCell = self.showPersonalCell;
@@ -131,7 +132,7 @@ NSString *kEnableCallsRecord = @"TUIKitDemo_EnableCallsRecord";
 }
 
 - (void)onClickLogout {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:TIMCommonLocalizableString(TIMAppConfirmLogout) /*@"确定退出吗"*/
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:TIMCommonLocalizableString(TIMAppConfirmLogout) /*@""*/
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert tuitheme_addAction:[UIAlertAction actionWithTitle:TIMCommonLocalizableString(TIMAppCancel)

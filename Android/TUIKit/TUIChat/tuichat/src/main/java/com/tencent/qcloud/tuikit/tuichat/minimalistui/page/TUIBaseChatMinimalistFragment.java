@@ -36,7 +36,7 @@ import com.tencent.qcloud.tuikit.tuichat.TUIChatConstants;
 import com.tencent.qcloud.tuikit.tuichat.bean.ChatInfo;
 import com.tencent.qcloud.tuikit.tuichat.bean.message.CallingMessageBean;
 import com.tencent.qcloud.tuikit.tuichat.bean.message.MergeMessageBean;
-import com.tencent.qcloud.tuikit.tuichat.component.AudioPlayer;
+import com.tencent.qcloud.tuikit.tuichat.component.audio.AudioPlayer;
 import com.tencent.qcloud.tuikit.tuichat.minimalistui.widget.ChatView;
 import com.tencent.qcloud.tuikit.tuichat.minimalistui.widget.input.InputView;
 import com.tencent.qcloud.tuikit.tuichat.minimalistui.widget.message.MessageRecyclerView;
@@ -74,7 +74,7 @@ public class TUIBaseChatMinimalistFragment extends BaseFragment {
         TUIChatLog.i(TAG, "oncreate view " + this);
 
         baseView = inflater.inflate(R.layout.chat_minimalist_fragment, container, false);
-        //        // TODO 通过api设置ChatLayout各种属性的样例
+        
         //        // Example of setting various properties of ChatLayout through api
         //        ChatLayoutSetting helper = new ChatLayoutSetting(getActivity());
         //        helper.setGroupId(mChatInfo.getId());
@@ -216,7 +216,7 @@ public class TUIBaseChatMinimalistFragment extends BaseFragment {
             public void onStartGroupMemberSelectActivity() {
                 Bundle param = new Bundle();
                 param.putString(TUIConstants.TUIContact.StartActivity.GroupMemberSelect.GROUP_ID, getChatInfo().getId());
-                TUICore.startActivityForResult(TUIBaseChatMinimalistFragment.this, "StartGroupMemberSelectActivity", param, result -> {
+                TUICore.startActivityForResult(TUIBaseChatMinimalistFragment.this, "StartGroupMemberSelectMinimalistActivity", param, result -> {
                     if (result.getData() != null) {
                         ArrayList<String> resultIds = result.getData().getStringArrayListExtra(TUIChatConstants.Selection.USER_ID_SELECT);
                         ArrayList<String> resultNames = result.getData().getStringArrayListExtra(TUIChatConstants.Selection.USER_NAMECARD_SELECT);

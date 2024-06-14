@@ -16,11 +16,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.tencent.qcloud.tuicore.TUIConstants;
 import com.tencent.qcloud.tuicore.TUICore;
 import com.tencent.qcloud.tuicore.TUILogin;
+import com.tencent.qcloud.tuicore.interfaces.TUICallback;
 import com.tencent.qcloud.tuicore.interfaces.TUIExtensionEventListener;
 import com.tencent.qcloud.tuicore.interfaces.TUIExtensionInfo;
 import com.tencent.qcloud.tuicore.util.ScreenUtil;
@@ -37,6 +39,7 @@ import com.tencent.qcloud.tuikit.tuicontact.R;
 import com.tencent.qcloud.tuikit.tuicontact.bean.ContactItemBean;
 import com.tencent.qcloud.tuikit.tuicontact.bean.FriendApplicationBean;
 import com.tencent.qcloud.tuikit.tuicontact.interfaces.IFriendProfileLayout;
+import com.tencent.qcloud.tuikit.tuicontact.minimalistui.pages.AddMoreDetailMinimalistDialogFragment;
 import com.tencent.qcloud.tuikit.tuicontact.presenter.FriendProfilePresenter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +52,15 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
     private static final String TAG = FriendProfileLayout.class.getSimpleName();
 
     private MinimalistTitleBar mTitleBar;
+
+    private View strangerArea;
+    private ImageView strangerIcon;
+    private TextView strangerName;
+    private TextView strangerUserID;
+    private View addFriendBtn;
+    private ViewGroup strangerWarningExtensionListView;
+
+    private View friendArea;
     private ShadeImageView mHeadImageView;
     private TextView mNickNameView;
     private MinimalistLineControllerView mRemarkView;
@@ -62,6 +74,8 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
 
     private RecyclerView profileItemListView;
     private ProfileItemAdapter profileItemAdapter;
+    private ViewGroup warningExtensionListView;
+
     private ContactItemBean mContactInfo;
     private FriendApplicationBean friendApplicationBean;
     private OnButtonClickListener mListener;
@@ -94,6 +108,13 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
     private void init() {
         inflate(getContext(), R.layout.minimalist_contact_friend_profile_layout, this);
 
+        strangerArea = findViewById(R.id.stranger_area);
+        strangerIcon = findViewById(R.id.stranger_icon);
+        strangerName = findViewById(R.id.stranger_name);
+        strangerUserID = findViewById(R.id.stranger_user_id);
+        addFriendBtn = findViewById(R.id.add_friend_btn);
+
+        friendArea = findViewById(R.id.friend_area);
         mHeadImageView = findViewById(R.id.friend_icon);
         mNickNameView = findViewById(R.id.friend_nick_name);
         friendIDTv = findViewById(R.id.friend_account);
@@ -138,6 +159,10 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
             }
         });
         profileItemListView.setAdapter(profileItemAdapter);
+        warningExtensionListView = findViewById(R.id.warning_extension_list);
+        strangerWarningExtensionListView = findViewById(R.id.stranger_warning_extension_list);
+        strangerArea.setVisibility(GONE);
+        friendArea.setVisibility(GONE);
     }
 
     private void setupExtension() {
@@ -147,6 +172,42 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
         Collections.sort(extensionInfoList);
         profileItemAdapter.setExtensionInfoList(extensionInfoList);
         profileItemAdapter.notifyDataSetChanged();
+
+        List<TUIExtensionInfo> warningExtensionList = TUICore.getExtensionList(TUIConstants.TUIContact.Extension.FriendProfileWarningButton.EXTENSION_ID, null);
+        Collections.sort(warningExtensionList);
+        strangerWarningExtensionListView.removeAllViews();
+        for (TUIExtensionInfo extensionInfo : warningExtensionList) {
+            View itemView = LayoutInflater.from(getContext()).inflate(R.layout.contact_minimalist_stranger_profile_warning_item_layout, null);
+            TextView itemButton = itemView.findViewById(R.id.item_button);
+            itemButton.setText(extensionInfo.getText());
+            itemButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (extensionInfo.getExtensionListener() != null) {
+                        extensionInfo.getExtensionListener().onClicked(null);
+                    }
+                }
+            });
+            strangerWarningExtensionListView.addView(itemView);
+        }
+
+        warningExtensionListView.removeAllViews();
+        for (TUIExtensionInfo extensionInfo : warningExtensionList) {
+            View itemView = LayoutInflater.from(getContext()).inflate(R.layout.contact_minimalist_profile_warning_item_layout, null);
+            MinimalistLineControllerView itemButton = itemView.findViewById(R.id.item_button);
+            itemButton.setName(extensionInfo.getText());
+            itemButton.setNameColor(getResources().getColor(R.color.contact_minimalist_profile_item_warning_text_color));
+            itemButton.setBackgroundColor(getResources().getColor(R.color.contact_minimalist_profile_item_bg_color));
+            itemButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (extensionInfo.getExtensionListener() != null) {
+                        extensionInfo.getExtensionListener().onClicked(null);
+                    }
+                }
+            });
+            warningExtensionListView.addView(itemView);
+        }
     }
 
     private void initEvent() {
@@ -179,7 +240,7 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
             friendIDTv.setText(mId);
             loadUserProfile(mId);
         } else if (data instanceof ContactItemBean) {
-            setViewContentFromItemBean((ContactItemBean) data);
+            onDataSourceChanged((ContactItemBean) data);
         }
 
         if (!TextUtils.isEmpty(mNickname)) {
@@ -261,23 +322,37 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
 
     @Override
     public void onDataSourceChanged(ContactItemBean bean) {
-        setViewContentFromItemBean(bean);
-        setupExtension();
-        if (bean.isFriend()) {
+        if (bean.isFriend() || bean.isBlackList()) {
+            strangerArea.setVisibility(GONE);
+            friendArea.setVisibility(VISIBLE);
+            setViewContentFromItemBean(bean);
+            setupExtension();
             updateMessageOptionView();
             clearMessageBtn.setVisibility(VISIBLE);
-        }
 
-        if (!TextUtils.isEmpty(mNickname)) {
-            mNickNameView.setText(mNickname);
+            if (!TextUtils.isEmpty(mNickname)) {
+                mNickNameView.setText(mNickname);
+            } else {
+                mNickNameView.setText(mId);
+            }
+
+            if (!TextUtils.isEmpty(bean.getAvatarUrl())) {
+                int radius = getResources().getDimensionPixelSize(R.dimen.contact_profile_face_radius);
+                GlideEngine.loadUserIcon(mHeadImageView, bean.getAvatarUrl(), radius);
+            }
         } else {
-            mNickNameView.setText(mId);
+            strangerArea.setVisibility(VISIBLE);
+            friendArea.setVisibility(GONE);
+            GlideEngine.loadUserIcon(strangerIcon, bean.getAvatarUrl());
+            strangerName.setText(bean.getDisplayName());
+            strangerUserID.setText(bean.getId());
+            addFriendBtn.setOnClickListener(v -> {
+                AddMoreDetailMinimalistDialogFragment detailDialog = new AddMoreDetailMinimalistDialogFragment();
+                detailDialog.setData(bean);
+                detailDialog.show(((AppCompatActivity) getContext()).getSupportFragmentManager(), "AddMoreDetail");
+            });
         }
 
-        if (!TextUtils.isEmpty(bean.getAvatarUrl())) {
-            int radius = getResources().getDimensionPixelSize(R.dimen.contact_profile_face_radius);
-            GlideEngine.loadUserIcon(mHeadImageView, bean.getAvatarUrl(), radius);
-        }
     }
 
     private void loadUserProfile(String id) {
@@ -453,7 +528,6 @@ public class FriendProfileLayout extends LinearLayout implements View.OnClickLis
     }
 
     public interface OnButtonClickListener {
-        void onStartConversationClick(ContactItemBean info);
 
         void onDeleteFriendClick(String id);
 

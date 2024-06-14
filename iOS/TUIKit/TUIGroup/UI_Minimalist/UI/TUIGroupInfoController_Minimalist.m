@@ -495,7 +495,10 @@
     [ac tuitheme_addAction:[UIAlertAction actionWithTitle:TIMCommonLocalizableString(Cancel) style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:ac animated:YES completion:nil];
 }
-
+- (void)didReportGroup:(TUIButtonCell *)cell {
+    NSURL *url = [NSURL URLWithString:@"https://cloud.tencent.com/act/event/report-platform"];
+    [TUITool openLinkWithURL:url];
+}
 - (UIViewController *)findConversationListViewController {
     UIViewController *vc = self.navigationController.viewControllers[0];
     for (UIViewController *vc in self.navigationController.viewControllers) {
@@ -511,21 +514,22 @@
     if (cell.switcher.on) {
         enableMark = YES;
     }
-    cell.switchData.on = enableMark;
 
     @weakify(self);
 
     [V2TIMManager.sharedInstance markConversation:@[ [NSString stringWithFormat:@"group_%@", self.groupId] ]
                                          markType:@(V2TIM_CONVERSATION_MARK_TYPE_FOLD)
                                        enableMark:enableMark
-                                             succ:nil
+                                             succ:^(NSArray<V2TIMConversationOperationResult *> *result) {
+        cell.switchData.on = enableMark;
+        [[TUIConversationPin sharedInstance] removeTopConversation:[NSString stringWithFormat:@"group_%@", self.groupId]
+                                                          callback:^(BOOL success, NSString *_Nonnull errorMessage) {
+                                                            @strongify(self);
+                                                            [self updateGroupInfo];
+                                                          }];
+    }
                                              fail:nil];
 
-    [[TUIConversationPin sharedInstance] removeTopConversation:[NSString stringWithFormat:@"group_%@", self.groupId]
-                                                      callback:^(BOOL success, NSString *_Nonnull errorMessage) {
-                                                        @strongify(self);
-                                                        [self updateGroupInfo];
-                                                      }];
 }
 
 - (void)didSelectOnChangeBackgroundImage:(TUICommonTextCell *)cell {

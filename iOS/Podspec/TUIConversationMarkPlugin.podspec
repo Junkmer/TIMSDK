@@ -1,8 +1,8 @@
 Pod::Spec.new do |spec|
     spec.name         = 'TUIConversationMarkPlugin'
-    spec.version      = '7.7.5282'
+    spec.version      = '8.0.5895'
     spec.platform     = :ios 
-    spec.ios.deployment_target = '9.0'
+    spec.ios.deployment_target = '10.0'
     spec.license      = { :type => 'Proprietary',
         :text => <<-LICENSE
           copyright 2017 tencent Ltd. All rights reserved.
@@ -15,15 +15,13 @@ Pod::Spec.new do |spec|
     
     spec.requires_arc = true
   
-    spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/7.7.5282/ios/TUIConversationMarkPlugin_7.7.5282.framework.zip'}
-    spec.preserve_paths = 'TUIConversationMarkPlugin.framework'
-    spec.vendored_frameworks = 'TUIConversationMarkPlugin.framework'
-    spec.pod_target_xcconfig = {
-      'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64'
+    spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuiplugin/8.0.5895/ios/TUIConversationMarkPlugin_8.0.5895.xcframework.zip'}
+
+    spec.vendored_frameworks = 'TUIConversationMarkPlugin.xcframework'
+    spec.resource_bundle = {
+      "#{spec.module_name}_Privacy" => '**/TUIConversationMarkPlugin.xcframework/ios-arm64/TUIConversationMarkPlugin.framework/PrivacyInfo.xcprivacy'
     }
-    spec.user_target_xcconfig = { 
-      'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64'
-    } 
-  end
+
+end
 
 # pod trunk push TUIConversationMarkPlugin.podspec --use-libraries --allow-warnings

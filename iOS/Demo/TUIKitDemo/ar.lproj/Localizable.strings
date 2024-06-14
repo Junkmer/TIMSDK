@@ -43,12 +43,13 @@
 
 "TabBarItemMessageText" = "الرسائل";
 "TabBarItemContactText" = "جهات الاتصال";
-"TabBarItemMeText"      = "أنا";
+"TabBarItemMeText"      = "الإعدادات";
 
 "ChatsCreateFailed" = "فشل إنشاء المجموعة";
 
 "ChatSecurityWarning" = "[تذكير أمان] يتم استخدام هذا التطبيق فقط لتجربة ميزات منتجات Tencent Cloud Chat ولا يمكن استخدامه للتفاوض التجاري والتوسع. يرجى عدم الوثوق في التحويل المالي والفوز في اليانصيب وغيرها من المعلومات المتعلقة بالمال، وعدم إجراء مكالمات هاتفية غريبة بسهولة، والحذر من الاحتيال.";
 "ChatSecurityWarningReport" = "الإبلاغ عنها";
+"ChatSecurityWarningGot" = "يستلم";
 
 "MeAbout" = "حول TencentCloud·IM";
 "MeDevelop" = "تطوير وتصحيح الأخطاء";

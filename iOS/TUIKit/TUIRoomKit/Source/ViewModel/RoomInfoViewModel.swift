@@ -2,12 +2,12 @@
 //  RoomInfoViewModel.swift
 //  TUIRoomKit
 //
-//  Created by 唐佳宁 on 2023/1/3.
+//  Created by janejntang on 2023/1/3.
 //  Copyright © 2022 Tencent. All rights reserved.
 //
 
 import Foundation
-import TUIRoomEngine
+import RTCRoomEngine
 
 enum CopyType {
     case copyRoomIdType
@@ -27,7 +27,6 @@ class RoomInfoViewModel {
         store.roomInfo
     }
     weak var viewResponder: RoomInfoResponder?
-    //房间链接
     var roomLink: String? {
         guard let bundleId = Bundle.main.bundleIdentifier else { return nil }
         if bundleId == "com.tencent.tuiroom.apiexample" || bundleId == "com.tencent.fx.rtmpdemo" {
@@ -77,13 +76,7 @@ class RoomInfoViewModel {
         
         let roomTypeItem = ListCellItemData()
         roomTypeItem.titleText = .roomTypeText
-        switch roomInfo.speechMode {
-        case .freeToSpeak:
-            roomTypeItem.messageText = .freedomSpeakText
-        case .applySpeakAfterTakingSeat:
-            roomTypeItem.messageText = .raiseHandSpeakText
-        default: break
-        }
+        roomTypeItem.messageText = roomInfo.isSeatEnabled ?  .raiseHandSpeakText: .freedomSpeakText
         messageItems.append(roomTypeItem)
         
         let roomIdItem = createListCellItemData(titleText: .roomIdText, messageText: roomInfo.roomId, hasButton: true, copyType: .copyRoomIdType)
@@ -101,7 +94,6 @@ class RoomInfoViewModel {
     }
     
     func codeAction(sender: UIButton) {
-        RoomRouter.shared.dismissPopupViewController(viewType: .roomInfoViewType)
         RoomRouter.shared.presentPopUpViewController(viewType: .QRCodeViewType, height: 720.scale375Height())
     }
     
@@ -112,24 +104,24 @@ class RoomInfoViewModel {
 
 private extension String {
     static var freedomSpeakText: String {
-        localized("TUIRoom.freedom.speaker")
+        localized("Free Speech Conference")
     }
     static var raiseHandSpeakText: String {
-        localized("TUIRoom.raise.speaker")
+        localized("On-stage Speaking Conference")
     }
     static var roomHostText: String {
-        localized("TUIRoom.host")
+        localized("Host")
     }
     static var roomTypeText: String {
-        localized("TUIRoom.room.type")
+        localized("Conference Type")
     }
     static var roomIdText: String {
-        localized("TUIRoom.room.num")
+        localized("ConferenceID")
     }
     static var roomLinkText: String {
-        localized("TUIRoom.room.link")
+        localized("Link")
     }
     static var copyText: String {
-        localized("TUIRoom.room.copy")
+        localized("Copy")
     }
 }

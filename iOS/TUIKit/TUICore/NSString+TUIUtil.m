@@ -3,7 +3,7 @@
 //
 //
 //  Created by Alexi on 12-11-5.
-//  Copyright (c) 2012年 . All rights reserved.
+//  Copyright (c) 2012 . All rights reserved.
 //
 
 #import <CommonCrypto/CommonDigest.h>
@@ -327,11 +327,11 @@ char tui_pinyinFirstLetter(unsigned short hanzi) {
            ([self rangeOfString:str options:(compareOptions | NSBackwardsSearch)].location == ([self length] - [str length]));
 }
 
-- (BOOL)containsString:(NSString *)str {
-    return [self containsString:str Options:NSCaseInsensitiveSearch];
+- (BOOL)tui_containsString:(NSString *)str {
+    return [self tui_containsString:str Options:NSCaseInsensitiveSearch];
 }
 
-- (BOOL)containsString:(NSString *)str Options:(NSStringCompareOptions)compareOptions {
+- (BOOL)tui_containsString:(NSString *)str Options:(NSStringCompareOptions)compareOptions {
     return (str != nil) && ([str length] > 0) && ([self length] >= [str length]) && ([self rangeOfString:str options:compareOptions].location != NSNotFound);
 }
 

@@ -10,6 +10,7 @@
 #import <TIMCommon/TIMDefine.h>
 #import <TIMCommon/TUIMessageCellLayout.h>
 #import <TIMCommon/TUISystemMessageCell.h>
+#import <TUICore/TUICore.h>
 #import <TUICore/TUIDarkModel.h>
 #import <TUICore/TUIGlobalization.h>
 #import <TUICore/TUIThemeManager.h>
@@ -35,7 +36,7 @@
 
 #define STR(x) @ #x
 
-@interface TUIMergeMessageListController_Minimalist () <TUIMessageCellDelegate, TUIMessageBaseDataProviderDataSource>
+@interface TUIMergeMessageListController_Minimalist () <TUIMessageCellDelegate, TUIMessageBaseDataProviderDataSource,TUINotificationProtocol>
 @property(nonatomic, strong) NSArray<V2TIMMessage *> *imMsgs;
 @property(nonatomic, strong) NSMutableArray<TUIMessageCellData *> *uiMsgs;
 @property(nonatomic, strong) NSMutableDictionary *stylesCache;
@@ -44,6 +45,16 @@
 @end
 
 @implementation TUIMergeMessageListController_Minimalist
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        [TUICore registerEvent:TUICore_TUIPluginNotify
+                        subKey:TUICore_TUIPluginNotify_DidChangePluginViewSubKey
+                        object:self];
+    }
+    return self;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -136,7 +147,7 @@
         }
         data.cellLayout = layout;
         data.direction = MsgDirectionIncoming;
-        //        data.showName = YES;
+        data.showName = NO;
         if (data) {
             data.innerMessage = msg;
             data.msgID = msg.msgID;
@@ -328,31 +339,45 @@
         originMsgID = cellData.originMsgID;
         msgAbstract = cellData.msgAbstract;
     }
+    
+    TUIMessageCellData *originMemoryMessageData = nil;
+    for (TUIMessageCellData *uiMsg in self.uiMsgs) {
+        if ([uiMsg.innerMessage.msgID isEqualToString:originMsgID]) {
+            originMemoryMessageData = uiMsg;
+            break;
+        }
+    }
+    
+    if (originMemoryMessageData && [cell isKindOfClass:TUIReplyMessageCell_Minimalist.class]) {
+        [self onJumpToRepliesDetailPage:originMemoryMessageData];
+    }
+    else {
+        [(TUIMessageSearchDataProvider *)self.msgDataProvider
+            findMessages:@[ originMsgID ?: @"" ]
+                callback:^(BOOL success, NSString *_Nonnull desc, NSArray<V2TIMMessage *> *_Nonnull msgs) {
+                  if (!success) {
+                      [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
+                      return;
+                  }
+                  V2TIMMessage *message = msgs.firstObject;
+                  if (message == nil) {
+                      [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
+                      return;
+                  }
 
-    [(TUIMessageSearchDataProvider *)self.msgDataProvider
-        findMessages:@[ originMsgID ?: @"" ]
-            callback:^(BOOL success, NSString *_Nonnull desc, NSArray<V2TIMMessage *> *_Nonnull msgs) {
-              if (!success) {
-                  [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
-                  return;
-              }
-              V2TIMMessage *message = msgs.firstObject;
-              if (message == nil) {
-                  [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
-                  return;
-              }
+                  if (message.status == V2TIM_MSG_STATUS_HAS_DELETED || message.status == V2TIM_MSG_STATUS_LOCAL_REVOKED) {
+                      [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
+                      return;
+                  }
 
-              if (message.status == V2TIM_MSG_STATUS_HAS_DELETED || message.status == V2TIM_MSG_STATUS_LOCAL_REVOKED) {
-                  [TUITool makeToast:TIMCommonLocalizableString(TUIKitReplyMessageNotFoundOriginMessage)];
-                  return;
-              }
+                  if ([cell isKindOfClass:TUIReplyMessageCell_Minimalist.class]) {
+                      [self jumpDetailPageByMessage:message];
+                  } else if ([cell isKindOfClass:TUIReferenceMessageCell_Minimalist.class]) {
+                      [self scrollToLocateMessage:message];
+                  }
+                }];
 
-              if ([cell isKindOfClass:TUIReplyMessageCell_Minimalist.class]) {
-                  [self jumpDetailPageByMessage:message];
-              } else if ([cell isKindOfClass:TUIReferenceMessageCell_Minimalist.class]) {
-                  [self scrollToLocateMessage:message];
-              }
-            }];
+    }
 }
 
 - (void)jumpDetailPageByMessage:(V2TIMMessage *)message {
@@ -381,9 +406,6 @@
     };
 }
 
-- (void)onJumpToRepliesEmojiPage:(TUIMessageCellData *)data {
-    // to do
-}
 
 - (void)showImageMessage:(TUIImageMessageCell_Minimalist *)cell {
     CGRect frame = [cell.thumb convertRect:cell.thumb.bounds toView:[UIApplication sharedApplication].delegate.window];
@@ -488,6 +510,60 @@
     if (cellData) {
         [self.messageCellConfig removeHeightCacheOfMessageCellData:cellData];
     }
+}
+#pragma mark - TUINotificationProtocol
+- (void)onNotifyEvent:(NSString *)key subKey:(NSString *)subKey object:(id)anObject param:(NSDictionary *)param {
+    if ([key isEqualToString:TUICore_TUIPluginNotify] && [subKey isEqualToString:TUICore_TUIPluginNotify_DidChangePluginViewSubKey]) {
+        TUIMessageCellData *data = param[TUICore_TUIPluginNotify_DidChangePluginViewSubKey_Data];
+        [self.messageCellConfig removeHeightCacheOfMessageCellData:data];
+        [self reloadAndScrollToBottomOfMessage:data.innerMessage.msgID section:0];
+    }
+}
+
+- (void)reloadAndScrollToBottomOfMessage:(NSString *)messageID section:(NSInteger)section {
+    // Dispatch the task to RunLoop to ensure that they are executed after the UITableView refresh is complete.
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self reloadCellOfMessage:messageID section:section];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self scrollCellToBottomOfMessage:messageID section:section];
+      });
+    });
+}
+
+- (void)reloadCellOfMessage:(NSString *)messageID section:(NSInteger)section {
+    NSIndexPath *indexPath = [self indexPathOfMessage:messageID section:section];
+
+    // Disable animation when loading to avoid cell jumping.
+    if (indexPath == nil) {
+        return;
+    }
+    [UIView performWithoutAnimation:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[ indexPath ] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }];
+}
+
+- (void)scrollCellToBottomOfMessage:(NSString *)messageID section:(NSInteger)section {
+    NSIndexPath *indexPath = [self indexPathOfMessage:messageID section:section];
+
+    // Scroll the tableView only if the bottom of the cell is invisible.
+    CGRect cellRect = [self.tableView rectForRowAtIndexPath:indexPath];
+    CGRect tableViewRect = self.tableView.bounds;
+    BOOL isBottomInvisible = cellRect.origin.y < CGRectGetMaxY(tableViewRect) && CGRectGetMaxY(cellRect) > CGRectGetMaxY(tableViewRect);
+    if (isBottomInvisible) {
+        [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionBottom animated:YES];
+    }
+}
+
+- (NSIndexPath *)indexPathOfMessage:(NSString *)messageID section:(NSInteger)section {
+    for (int i = 0; i < self.uiMsgs.count; i++) {
+        TUIMessageCellData *data = self.uiMsgs[i];
+        if ([data.innerMessage.msgID isEqualToString:messageID]) {
+            return [NSIndexPath indexPathForRow:i inSection:section];
+        }
+    }
+    return nil;
 }
 
 @end

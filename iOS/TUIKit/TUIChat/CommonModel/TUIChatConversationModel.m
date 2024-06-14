@@ -19,6 +19,12 @@
         self.enabelRoom  = YES;
         self.enableWelcomeCustomMessage  = YES;
         self.isLimitedPortraitOrientation = NO;
+        self.enablePoll = YES;
+        self.enableGroupNote = YES;
+        self.enableTakePhoto = YES;
+        self.enableRecordVideo = YES;
+        self.enableAlbum = YES;
+        self.enableFile = YES;
     }
     return self;
 }

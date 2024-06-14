@@ -24,7 +24,6 @@
 
     <string name="chat_message_detail">Message details</string>
 
-    <!-- 消息转发 -->
 
     <string name="titlebar_back">Back</string>
     <string name="forward_tip">please select message!</string>
@@ -48,7 +47,7 @@
     <string name="forward_oneByOne_limit_number_tip">Unable to forward the messages one by one because there are too many messages.</string>
 
     <string name="and_and"> </string>
-    <string name="be_friend">is your friend now.</string>
+    <string name="be_friend">is your contact now.</string>
 
     <string name="join_group_tip">You have been invited to the group: </string>
     <string name="joined_tip">You have joined the group: </string>
@@ -113,6 +112,11 @@
     <string name="group_add_opt_join_disable">Prohibited from Joining</string>
     <string name="group_add_opt_invite_disable">Prohibited from Inviting</string>
 
+    <string name="modify_topic_name_is">%s changed the topic name to %s</string>
+    <string name="modify_topic_notice">%s changed the topic notice to %s</string>
+    <string name="modify_topic_introduction">%s changed the group introduction to %s</string>
+    <string name="modify_topic_avatar">%s changed the group avatar</string>
+
     <string name="typing">Typing...</string>
     <string name="titlebar_mutiselect">Select</string>
     <string name="audio_permission_error">Need audio permission</string>
@@ -125,6 +129,7 @@
     <string name="input_tip">No nickname. Enter again.</string>
     <string name="chat_camera_occupied_tip">Other functions are using the camera.</string>
     <string name="chat_mic_is_being_used_cant_record">Microphone is being used by another function, unable to record.</string>
+    <string name="chat_record_audio_failed">Audio recording failed.</string>
 
     <string name="delivered">Delivered to</string>
     <string name="someone_unread">%d unread</string>
@@ -212,7 +217,7 @@
     <string name="chat_permission_mic_reason_title">%s applies for access to the microphone</string>
     <string name="chat_permission_mic_reason">In order for you to send voice messages, make video and audio and video calls, please allow us to access the microphone.</string>
     <string name="chat_permission_camera_reason_title">%s applies for camera permission</string>
-    <string name="chat_permission_camera_reason">In order for you to take photos or videos to send to friends, and to make video calls, please allow us to access the webcam.</string>
+    <string name="chat_permission_camera_reason">In order for you to take photos or videos to send to contacts, and to make video calls, please allow us to access the webcam.</string>
     <string name="chat_permission_storage_reason_title">%s applies for storage permission</string>
     <string name="chat_permission_storage_reason">In order for you to save photos and videos to your device, please allow us to write photos and videos to your device.</string>
     <string name="chat_permission_mic_dialog_alert">Allow microphone access in Settings->Apps->%s to use voice messages, video cameras, and audio and video calls as normal</string>
@@ -222,9 +227,9 @@
     <string name="chat_message_read_receipt">Message Read Receipt</string>
     <string name="chat_i_know">I got it</string>
     <string name="chat_no_more_reminders">No more reminders</string>
-    <string name="chat_im_flagship">Ultimate Edition</string>
+    <string name="chat_im_flagship">Premium Edition</string>
     <string name="chat_buying_guidelines">price description</string>
-    <string name="chat_im_flagship_edition_update_tip">%s feature is only available to the Ultimate edition, which can be used after purchasing the Ultimate Edition. See the price guidelines for details.</string>
+    <string name="chat_im_flagship_edition_update_tip">%s feature is only available to the Premium Edition, which can be used after purchasing the Premium Edition. See the price guidelines for details.</string>
 
     <string name="chat_reply_detail">Reply detail</string>
 
@@ -275,4 +280,19 @@
     <string name="chat_risk_sound">[Violation audio]</string>
     <string name="chat_risk_image">[Violation image]</string>
     <string name="chat_risk_video">[Violation video]</string>
+
+    <string name="chat_recent_use">Recent Use</string>
+    <string name="chat_all_emojis">All Emojis</string>
+
+    <string name="chat_group_pin_message">Pin</string>
+    <string name="chat_group_unpin_message">Unpin</string>
+    <string name="chat_group_message_pinned">%s pinned a message</string>
+    <string name="chat_group_message_unpinned">%s removed a pinned message</string>
+    <string name="chat_unpinned_button_text">Remove</string>
+    <string name="chat_message_is_pinned">The message is already pinned.</string>
+    <string name="chat_message_is_unpinned">This message has already been unpinned.</string>
+
+    <string name="chat_quote_origin_message_revoked">Quoted content has been revoked</string>
+    <string name="chat_reply_origin_message_revoked">Reply content has been revoked</string>
+
 </resources>

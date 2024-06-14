@@ -37,9 +37,6 @@ public class ConversationLayout extends RelativeLayout implements IConversationL
         }
     }
 
-    /**
-     * 初始化相关UI元素
-     */
     private void init() {
         inflate(getContext(), R.layout.conversation_layout, this);
         mConversationList = findViewById(R.id.conversation_list);
@@ -97,7 +94,7 @@ public class ConversationLayout extends RelativeLayout implements IConversationL
     @Override
     public void markConversationUnread(ConversationInfo conversationInfo, boolean markUnread) {
         if (presenter != null) {
-            presenter.markConversationUnread(conversationInfo, markUnread);
+            presenter.markConversationUnreadAndCleanUnreadCount(conversationInfo, markUnread);
         }
     }
 

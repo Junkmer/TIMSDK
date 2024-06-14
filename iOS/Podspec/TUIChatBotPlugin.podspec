@@ -1,8 +1,8 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUIChatBotPlugin'
-  spec.version      = '7.7.5282'
+  spec.version      = '8.0.5895'
   spec.platform     = :ios
-  spec.ios.deployment_target = '9.0'
+  spec.ios.deployment_target = '10.0'
   spec.license      = { :type => 'Proprietary',
       :text => <<-LICENSE
         copyright 2017 tencent Ltd. All rights reserved.
@@ -16,16 +16,16 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/7.7.5282/ios/TUIChatBotPlugin.zip'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.0.5895/ios/TUIChatBotPlugin.zip'}
 
   spec.default_subspec = 'ALL'
 
   spec.subspec 'CommonModel' do |commonModel|
     commonModel.source_files = '**/TUIChatBotPlugin/CommonModel/*.{h,m,mm}'
-    commonModel.dependency 'TUICore','7.7.5282'
-    commonModel.dependency 'TIMCommon','7.7.5282'
-    commonModel.dependency 'TUIChat','7.7.5282'
-    commonModel.dependency 'TUIContact','7.7.5282'
+    commonModel.dependency 'TUICore'
+    commonModel.dependency 'TIMCommon', '~> 8.0.5895'
+    commonModel.dependency 'TUIChat/UI_Classic', '~> 8.0.5895'
+    commonModel.dependency 'TUIContact/UI_Classic','~> 8.0.5895'
   end
 
   spec.subspec 'UI_Classic' do |commonUI|
@@ -45,23 +45,17 @@ Pod::Spec.new do |spec|
       service.source_files = '**/TUIChatBotPlugin/UI_Classic/Service/*.{h,m,mm}'
       service.dependency "TUIChatBotPlugin/UI_Classic/UI"
     end
-    commonUI.resource = [
-      '**/TUIChatBotPlugin/Resources/*.bundle'
-    ]
+    commonUI.resource = ['**/TUIChatBotPlugin/Resources/*.bundle']
   end
+
+  spec.resource_bundle = {
+    "#{spec.module_name}_Privacy" => '**/TUIChatBotPlugin/Resources/PrivacyInfo.xcprivacy'
+  }
 
   spec.subspec 'ALL' do |all|
     all.dependency "TUIChatBotPlugin/UI_Classic"
   end
 
-  spec.pod_target_xcconfig = {
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64',
-    'GENERATE_INFOPLIST_FILE' => 'YES'
-  }
-  spec.user_target_xcconfig = { 
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64',
-    'GENERATE_INFOPLIST_FILE' => 'YES'
-  }
 end
 
 # pod trunk push TUIChatBotPlugin.podspec --use-libraries --allow-warnings

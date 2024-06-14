@@ -7,21 +7,19 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
-
 import com.tencent.imsdk.v2.V2TIMConversation;
 import com.tencent.imsdk.v2.V2TIMManager;
 import com.tencent.qcloud.tim.demo.TIMAppService;
 import com.tencent.qcloud.tim.demo.config.AppConfig;
 import com.tencent.qcloud.tim.demo.push.HandleOfflinePushCallBack;
-import com.tencent.qcloud.tim.demo.push.OfflineMessageBean;
 import com.tencent.qcloud.tim.demo.push.OfflineMessageDispatcher;
-import com.tencent.qcloud.tuikit.timcommon.BuildConfig;
 import com.tencent.qcloud.tuicore.TUIConfig;
 import com.tencent.qcloud.tuicore.TUIConstants;
 import com.tencent.qcloud.tuicore.TUICore;
 import com.tencent.qcloud.tuicore.interfaces.TUILoginConfig;
+import com.tencent.qcloud.tuicore.push.OfflinePushExtInfo;
 import com.tencent.qcloud.tuicore.util.TUIBuild;
-
+import com.tencent.qcloud.tuikit.timcommon.BuildConfig;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +28,8 @@ public class TUIUtils {
     private static final String TAG = TUIUtils.class.getSimpleName();
 
     public static String offlineData = null;
+
+    private static boolean hasTryToLogin = false;
 
     public static void startActivity(String activityName, Bundle param) {
         TUICore.startActivity(activityName, param);
@@ -40,7 +40,7 @@ public class TUIUtils {
         bundle.putString(TUIConstants.TUIChat.CHAT_ID, chatId);
         bundle.putString(TUIConstants.TUIChat.CHAT_NAME, chatName);
         bundle.putInt(TUIConstants.TUIChat.CHAT_TYPE, chatType);
-        if (AppConfig.DEMO_UI_STYLE == 0) {
+        if (AppConfig.DEMO_UI_STYLE == AppConfig.DEMO_UI_STYLE_CLASSIC) {
             if (chatType == V2TIMConversation.V2TIM_C2C) {
                 TUICore.startActivity(TUIConstants.TUIChat.C2C_CHAT_ACTIVITY_NAME, bundle);
             } else if (chatType == V2TIMConversation.V2TIM_GROUP) {
@@ -103,8 +103,8 @@ public class TUIUtils {
             return;
         }
 
-        final OfflineMessageBean bean = OfflineMessageDispatcher.parseOfflineMessage(intent);
-        if (bean != null) {
+        final OfflinePushExtInfo offlinePushExtInfo = OfflineMessageDispatcher.parseOfflineMessage(intent);
+        if (offlinePushExtInfo != null) {
             if (callBack != null) {
                 callBack.onHandleOfflinePush(true);
             }
@@ -113,19 +113,25 @@ public class TUIUtils {
                 manager.cancelAll();
             }
 
-            if (bean.action == OfflineMessageBean.REDIRECT_ACTION_CHAT) {
-                if (TextUtils.isEmpty(bean.sender)) {
+            String senderId = offlinePushExtInfo.getBusinessInfo().getSenderId();
+            if (offlinePushExtInfo.getBusinessInfo().getChatAction() == OfflinePushExtInfo.REDIRECT_ACTION_CHAT) {
+                if (TextUtils.isEmpty(senderId)) {
                     return;
                 }
-                TUIUtils.startChat(bean.sender, bean.nickname, bean.chatType);
+                TUIUtils.startChat(senderId, offlinePushExtInfo.getBusinessInfo().getSenderNickName(), offlinePushExtInfo.getBusinessInfo().getChatType());
             }
         }
     }
 
     public static void handleOfflinePush(String ext, HandleOfflinePushCallBack callBack) {
-        Context context = TIMAppService.getAppContext();
         DemoLog.d(TAG, "handleOfflinePush ext = " + ext);
-        if (V2TIMManager.getInstance().getLoginStatus() == V2TIMManager.V2TIM_STATUS_LOGOUT) {
+        final OfflinePushExtInfo offlinePushExtInfo = OfflineMessageDispatcher.getOfflinePushExtInfo(ext);
+        if (offlinePushExtInfo == null) {
+            return;
+        }
+        Context context = TIMAppService.getAppContext();
+        if (V2TIMManager.getInstance().getLoginStatus() == V2TIMManager.V2TIM_STATUS_LOGOUT && !hasTryToLogin) {
+            hasTryToLogin = true;
             if (TUIConfig.getTUIHostType() == TUIConfig.TUI_HOST_TYPE_RTCUBE) {
                 offlineData = ext;
                 TUICore.notifyEvent(TUIConstants.TIMAppKit.NOTIFY_RTCUBE_EVENT_KEY, TUIConstants.TIMAppKit.NOTIFY_RTCUBE_LOGIN_SUB_KEY, null);
@@ -146,22 +152,20 @@ public class TUIUtils {
             return;
         }
 
-        final OfflineMessageBean bean = OfflineMessageDispatcher.getOfflineMessageBeanFromContainer(ext);
-        if (bean != null) {
-            if (callBack != null) {
-                callBack.onHandleOfflinePush(true);
-            }
-            NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (manager != null) {
-                manager.cancelAll();
-            }
+        if (callBack != null) {
+            callBack.onHandleOfflinePush(true);
+        }
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.cancelAll();
+        }
 
-            if (bean.action == OfflineMessageBean.REDIRECT_ACTION_CHAT) {
-                if (TextUtils.isEmpty(bean.sender)) {
-                    return;
-                }
-                TUIUtils.startChat(bean.sender, bean.nickname, bean.chatType);
+        String senderId = offlinePushExtInfo.getBusinessInfo().getSenderId();
+        if (offlinePushExtInfo.getBusinessInfo().getChatAction() == OfflinePushExtInfo.REDIRECT_ACTION_CHAT) {
+            if (TextUtils.isEmpty(senderId)) {
+                return;
             }
+            TUIUtils.startChat(senderId, offlinePushExtInfo.getBusinessInfo().getSenderNickName(), offlinePushExtInfo.getBusinessInfo().getChatType());
         }
     }
 

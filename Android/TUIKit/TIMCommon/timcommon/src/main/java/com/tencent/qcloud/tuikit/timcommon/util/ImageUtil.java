@@ -10,7 +10,6 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.media.ExifInterface;
-import android.net.Uri;
 import android.text.TextUtils;
 
 import com.tencent.imsdk.v2.V2TIMImageElem;
@@ -18,12 +17,9 @@ import com.tencent.qcloud.tuicore.TUIConfig;
 import com.tencent.qcloud.tuicore.TUILogin;
 import com.tencent.qcloud.tuicore.util.SPUtils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 
 public class ImageUtil {
     public static final String SP_IMAGE = "_conversation_group_face";
@@ -42,7 +38,7 @@ public class ImageUtil {
             outFile.deleteOnExit();
             outFile.createNewFile();
             fOut = new FileOutputStream(outFile);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fOut);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fOut);
             fOut.flush();
         } catch (IOException e1) {
             outFile.deleteOnExit();
@@ -59,108 +55,7 @@ public class ImageUtil {
         return outFile;
     }
 
-    public static Bitmap getBitmapFormPath(Uri uri) {
-        Bitmap bitmap = null;
-        try {
-            BitmapFactory.Options onlyBoundsOptions = new BitmapFactory.Options();
-            onlyBoundsOptions.inJustDecodeBounds = true;
-            onlyBoundsOptions.inDither = true; // optional
-            onlyBoundsOptions.inPreferredConfig = Bitmap.Config.ARGB_8888; // optional
-            InputStream input = TUIConfig.getAppContext().getContentResolver().openInputStream(uri);
-            BitmapFactory.decodeStream(input, null, onlyBoundsOptions);
-            input.close();
-            int originalWidth = onlyBoundsOptions.outWidth;
-            int originalHeight = onlyBoundsOptions.outHeight;
-            if ((originalWidth == -1) || (originalHeight == -1)) {
-                return null;
-            }
-            float hh = 800f;
-            float ww = 480f;
-            int degree = getBitmapDegree(uri);
-            if (degree == 90 || degree == 270) {
-                hh = 480;
-                ww = 800;
-            }
-            // 缩放比。由于是固定比例缩放，只用高或者宽其中一个数据进行计算即可
-            // zoom ratio. Since it is a fixed scale scaling, only one data of height or width can be used for calculation.
-            int be = 1;
-            if (originalWidth > originalHeight && originalWidth > ww) {
-                be = (int) (originalWidth / ww);
-            } else if (originalWidth < originalHeight && originalHeight > hh) {
-                be = (int) (originalHeight / hh);
-            }
-            if (be <= 0) {
-                be = 1;
-            }
-            BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
-            bitmapOptions.inSampleSize = be;
-            bitmapOptions.inDither = true;
-            bitmapOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            input = TUIConfig.getAppContext().getContentResolver().openInputStream(uri);
-            bitmap = BitmapFactory.decodeStream(input, null, bitmapOptions);
-
-            input.close();
-            compressImage(bitmap);
-            bitmap = rotateBitmapByDegree(bitmap, degree);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return bitmap;
-    }
-
-    public static Bitmap getBitmapFormPath(String path) {
-        if (TextUtils.isEmpty(path)) {
-            return null;
-        }
-        return getBitmapFormPath(Uri.fromFile(new File(path)));
-    }
-
-    public static Bitmap compressImage(Bitmap image) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        image.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-        int options = 100;
-        while (baos.toByteArray().length / 1024 > 100) {
-            baos.reset();
-            image.compress(Bitmap.CompressFormat.JPEG, options, baos);
-            options -= 10;
-        }
-        ByteArrayInputStream isBm = new ByteArrayInputStream(baos.toByteArray());
-        Bitmap bitmap = BitmapFactory.decodeStream(isBm, null, null);
-        return bitmap;
-    }
-
     /**
-     * 读取图片的旋转的角度
-     *
-     * Read the rotation angle of the image
-     */
-    public static int getBitmapDegree(Uri uri) {
-        int degree = 0;
-        try {
-            ExifInterface exifInterface = new ExifInterface(FileUtil.getPathFromUri(uri));
-            int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-            switch (orientation) {
-                case ExifInterface.ORIENTATION_ROTATE_90:
-                    degree = 90;
-                    break;
-                case ExifInterface.ORIENTATION_ROTATE_180:
-                    degree = 180;
-                    break;
-                case ExifInterface.ORIENTATION_ROTATE_270:
-                    degree = 270;
-                    break;
-                default:
-                    break;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return degree;
-    }
-
-    /**
-     * 读取图片的旋转的角度
      *
      * Read the rotation angle of the image
      */
@@ -189,11 +84,6 @@ public class ImageUtil {
     }
 
     /**
-     * 将图片按照某个角度进行旋转
-     *
-     * @param bm     需要旋转的图片
-     * @param degree 旋转角度
-     * @return 旋转后的图片
      *
      *
      * Rotate the image by an angle
@@ -267,7 +157,7 @@ public class ImageUtil {
         return size;
     }
 
-    // 图片文件先在本地做旋转，返回旋转之后的图片文件路径
+    
     // The image file is rotated locally, and the path of the image file after rotation is returned.
     public static String getImagePathAfterRotate(final String imagePath) {
         try {
@@ -292,11 +182,6 @@ public class ImageUtil {
     }
 
     /**
-     * 转换图片成圆形
-     *
-     * @param bitmap 传入Bitmap对象
-     * @return
-     *
      *
      * Convert image to circle
      *
@@ -363,79 +248,7 @@ public class ImageUtil {
         return output;
     }
 
-    public static boolean isImageDownloaded(String imagePath) {
-        try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(imagePath, options);
-            //            ImageDecoder.Source src = ImageDecoder.createSource(mContext.getContentResolver(),
-            //                    uri, res);
-            //            return ImageDecoder.decodeDrawable(src, (decoder, info, s) -> {
-            //                decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
-            //            });
-
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
     /**
-     *  加载高分辨率图片需要做下适配
-     *
-     * @param imagePath 图片路径
-     * @return Bitmap 调整后的位图
-     *
-     *
-     * Loading high-resolution images requires adaptation
-     *
-     * @param imagePath
-     * @return Bitmap
-     */
-    public static Bitmap adaptBitmapFormPath(String imagePath, int reqWidth, int reqHeight) {
-        try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(imagePath, options);
-
-            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-
-            options.inJustDecodeBounds = false;
-            return BitmapFactory.decodeFile(imagePath, options);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
-        // Raw height and width of image
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        int inSampleSize = 1;
-
-        if (height > reqHeight || width > reqWidth) {
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-
-            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
-            // height and width larger than the requested height and width.
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-
-        return inSampleSize;
-    }
-
-    /**
-     * 根据图片 UUID 和 类型得到图片文件路径
-     * @param uuid 图片 UUID
-     * @param imageType 图片类型 V2TIMImageElem.V2TIM_IMAGE_TYPE_THUMB , V2TIMImageElem.V2TIM_IMAGE_TYPE_ORIGIN ,
-     *                  V2TIMImageElem.V2TIM_IMAGE_TYPE_LARGE
-     * @return 图片文件路径
      *
      * Get the image file path based on the image UUID and type
      * @param uuid

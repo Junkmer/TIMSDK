@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = 'TUICore'
-  spec.version      = '7.7.5282'
+  spec.version      = '8.0.5895'
   spec.platform     = :ios
   spec.ios.deployment_target = '9.0'
   spec.license      = { :type => 'Proprietary',
@@ -16,33 +16,32 @@ Pod::Spec.new do |spec|
 
   spec.requires_arc = true
 
-  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/7.7.5282/ios/TUICore.zip'}
+  spec.source = { :http => 'https://im.sdk.cloud.tencent.cn/download/tuikit/8.0.5895/ios/TUICore.zip'}
 
   spec.default_subspec = 'ImSDK_Plus'
 
   spec.dependency 'SDWebImage'
   
   spec.subspec 'ImSDK_Plus' do |ss|
-      ss.dependency 'TXIMSDK_Plus_iOS','7.7.5282'
+      ss.dependency 'TXIMSDK_Plus_iOS_XCFramework'
       ss.dependency 'TUICore/Base'
   end
   
   spec.subspec 'Base' do |ss|
       ss.source_files = '**/TUICore/*.{h,m,mm,c}'
-      ss.resource = [
-          '**/TUICore/Resources/*.bundle'
-      ]
+      ss.resource = ['**/TUICore/Resources/*.bundle']
   end
 
   spec.pod_target_xcconfig = {
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64',
     'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) ENABLE_SCENARIO_SDK',
     'DEFINES_MODULE' => 'YES'
   }
   spec.user_target_xcconfig = {
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'arm64',
     'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) ENABLE_SCENARIO_SDK',
     'DEFINES_MODULE' => 'YES'
+  }
+  spec.resource_bundle = {
+    "#{spec.module_name}_Privacy" => '**/TUICore/Resources/PrivacyInfo.xcprivacy'
   }
 end
 

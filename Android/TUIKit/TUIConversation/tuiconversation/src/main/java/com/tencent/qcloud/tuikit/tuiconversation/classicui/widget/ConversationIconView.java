@@ -7,21 +7,21 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+
 import com.tencent.qcloud.tuicore.TUIConfig;
 import com.tencent.qcloud.tuikit.timcommon.component.gatherimage.SynthesizedImageView;
 import com.tencent.qcloud.tuikit.timcommon.component.interfaces.IUIKitCallback;
 import com.tencent.qcloud.tuikit.timcommon.util.ImageUtil;
 import com.tencent.qcloud.tuikit.timcommon.util.ScreenUtil;
+import com.tencent.qcloud.tuikit.timcommon.util.TUIUtil;
 import com.tencent.qcloud.tuikit.timcommon.util.ThreadUtils;
 import com.tencent.qcloud.tuikit.tuiconversation.R;
 import com.tencent.qcloud.tuikit.tuiconversation.bean.ConversationInfo;
 import com.tencent.qcloud.tuikit.tuiconversation.presenter.ConversationIconPresenter;
+
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 会话列表头像View
- */
 public class ConversationIconView extends RelativeLayout {
     private static final int icon_size = ScreenUtil.getPxByDp(50);
     private ImageView mIconView;
@@ -55,13 +55,8 @@ public class ConversationIconView extends RelativeLayout {
         this.showFoldedStyle = showFoldedStyle;
     }
 
-    /**
-     * 设置会话头像的url
-     *
-     * @param iconUrls 头像url,最多只取前9个
-     */
     public void setIconUrls(final List<Object> iconUrls, final String conversationId) {
-        // 需要在主线程中执行，以免写缓存出现问题
+        
         ThreadUtils.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -94,7 +89,7 @@ public class ConversationIconView extends RelativeLayout {
                 setIconUrls(faceList, info.getConversationId());
                 return;
             }
-            // 读取文件，在线程池中进行，避免主线程卡顿
+
             ThreadUtils.execute(new Runnable() {
                 @Override
                 public void run() {
@@ -133,7 +128,13 @@ public class ConversationIconView extends RelativeLayout {
                     }
 
                     @Override
-                    public void onError(String module, int errCode, String errMsg) {}
+                    public void onError(String module, int errCode, String errMsg) {
+                        if (mIconView instanceof SynthesizedImageView) {
+                            ((SynthesizedImageView) (mIconView)).defaultImage(TUIUtil.getDefaultGroupIconResIDByGroupType(getContext(), info.getGroupType()));
+                        }
+
+                        setIconUrls(null, info.getConversationId());
+                    }
                 });
             }
         });

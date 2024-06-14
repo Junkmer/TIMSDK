@@ -34,9 +34,7 @@ public class ContactListView extends LinearLayout implements IContactListView {
     private boolean isGroupList = false;
 
     private TextView notFoundTip;
-    /**
-     * 右侧边栏导航区域
-     */
+
     private IndexBar mIndexBar;
 
     private TextView mTvSideBarHint;
@@ -137,9 +135,9 @@ public class ContactListView extends LinearLayout implements IContactListView {
     }
 
     @Override
-    public void onFriendApplicationChanged() {
-        if (dataSourceType == DataSource.CONTACT_LIST) {
-            mAdapter.notifyItemChanged(0);
+    public void onDataChanged(ContactItemBean contactItemBean) {
+        if (mAdapter != null) {
+            mAdapter.onDataChanged(contactItemBean);
         }
     }
 

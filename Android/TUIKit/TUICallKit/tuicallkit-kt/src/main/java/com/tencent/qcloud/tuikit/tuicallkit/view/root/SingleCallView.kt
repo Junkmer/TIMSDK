@@ -2,6 +2,8 @@ package com.tencent.qcloud.tuikit.tuicallkit.view.root
 
 import android.content.Context
 import android.view.LayoutInflater
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.RelativeLayout
 import com.tencent.qcloud.tuicore.TUIConstants
 import com.tencent.qcloud.tuicore.TUICore
@@ -9,6 +11,7 @@ import com.tencent.qcloud.tuikit.tuicallengine.TUICallDefine
 import com.tencent.qcloud.tuikit.tuicallengine.impl.base.Observer
 import com.tencent.qcloud.tuikit.tuicallkit.R
 import com.tencent.qcloud.tuikit.tuicallkit.view.component.CallTimerView
+import com.tencent.qcloud.tuikit.tuicallkit.view.component.CallWaitingHintView
 import com.tencent.qcloud.tuikit.tuicallkit.view.component.floatview.FloatingWindowButton
 import com.tencent.qcloud.tuikit.tuicallkit.view.component.function.AudioAndVideoCalleeWaitingView
 import com.tencent.qcloud.tuikit.tuicallkit.view.component.function.AudioCallerWaitingAndAcceptedView
@@ -20,16 +23,18 @@ import com.tencent.qcloud.tuikit.tuicallkit.view.component.videolayout.SingleCal
 import com.tencent.qcloud.tuikit.tuicallkit.viewmodel.root.SingleCallViewModel
 
 class SingleCallView(context: Context) : RelativeLayout(context) {
-    private var layoutTimer: RelativeLayout? = null
-    private var layoutUserInfoVideo: RelativeLayout? = null
-    private var layoutUserInfoAudio: RelativeLayout? = null
-    private var layoutFunction: RelativeLayout? = null
-    private var layoutFloatIcon: RelativeLayout? = null
-    private var layoutRender: RelativeLayout? = null
+    private var layoutTimer: FrameLayout? = null
+    private var layoutUserInfoVideo: FrameLayout? = null
+    private var layoutUserInfoAudio: FrameLayout? = null
+    private var layoutFunction: FrameLayout? = null
+    private var layoutFloatIcon: FrameLayout? = null
+    private var layoutRender: FrameLayout? = null
+    private var layoutCallTag: FrameLayout? = null
 
     private var functionView: BaseCallView? = null
     private var userInfoView: BaseCallView? = null
     private var callTimerView: CallTimerView? = null
+    private var hintView: CallWaitingHintView? = null
     private var singleCallVideoLayout: SingleCallVideoLayout? = null
     private var floatingWindowButton: FloatingWindowButton? = null
     private var viewModel = SingleCallViewModel()
@@ -86,6 +91,15 @@ class SingleCallView(context: Context) : RelativeLayout(context) {
         layoutUserInfoAudio = findViewById(R.id.rl_audio_user_info_layout)
         layoutTimer = findViewById(R.id.rl_single_time)
         layoutFunction = findViewById(R.id.rl_single_function)
+        layoutCallTag = findViewById(R.id.fl_call_tag)
+
+        hintView = CallWaitingHintView(context)
+        if (hintView?.parent != null) {
+            (hintView?.parent as ViewGroup).removeView(hintView)
+        }
+        if (hintView != null) {
+            layoutCallTag?.addView(hintView)
+        }
 
         refreshUserInfoView()
         refreshFunctionView()

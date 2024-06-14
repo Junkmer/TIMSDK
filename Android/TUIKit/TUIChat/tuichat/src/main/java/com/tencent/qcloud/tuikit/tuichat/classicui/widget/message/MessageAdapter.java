@@ -1,22 +1,24 @@
 package com.tencent.qcloud.tuikit.tuichat.classicui.widget.message;
 
-import static com.tencent.qcloud.tuikit.timcommon.classicui.widget.message.MessageBaseHolder.MSG_TYPE_HEADER_VIEW;
-import static com.tencent.qcloud.tuikit.tuichat.interfaces.IMessageRecyclerView.DATA_CHANGE_SCROLL_TO_POSITION_AND_UPDATE;
-
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.tencent.qcloud.tuicore.TUILogin;
 import com.tencent.qcloud.tuikit.timcommon.bean.TUIMessageBean;
 import com.tencent.qcloud.tuikit.timcommon.classicui.widget.message.MessageBaseHolder;
 import com.tencent.qcloud.tuikit.timcommon.classicui.widget.message.MessageContentHolder;
 import com.tencent.qcloud.tuikit.timcommon.component.fragments.BaseFragment;
+import com.tencent.qcloud.tuikit.timcommon.component.highlight.HighlightPresenter;
 import com.tencent.qcloud.tuikit.timcommon.interfaces.ICommonMessageAdapter;
 import com.tencent.qcloud.tuikit.timcommon.interfaces.OnItemClickListener;
+import com.tencent.qcloud.tuikit.timcommon.interfaces.UserFaceUrlCache;
 import com.tencent.qcloud.tuikit.timcommon.util.ThreadUtils;
 import com.tencent.qcloud.tuikit.tuichat.bean.message.TipsMessageBean;
 import com.tencent.qcloud.tuikit.tuichat.classicui.ClassicUIService;
-import com.tencent.qcloud.tuikit.tuichat.classicui.widget.message.viewholder.MessageHeaderHolder;
+import com.tencent.qcloud.tuikit.tuichat.classicui.widget.message.viewholder.MessageHeadHolder;
 import com.tencent.qcloud.tuikit.tuichat.classicui.widget.message.viewholder.MessageViewHolderFactory;
 import com.tencent.qcloud.tuikit.tuichat.config.TUIChatConfigs;
 import com.tencent.qcloud.tuikit.tuichat.interfaces.IMessageAdapter;
@@ -26,6 +28,7 @@ import com.tencent.qcloud.tuikit.tuichat.util.TUIChatLog;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdapter, ICommonMessageAdapter {
     private static final String TAG = MessageAdapter.class.getSimpleName();
@@ -39,13 +42,12 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
     private HashMap<String, Boolean> mSelectedPositions = new HashMap<>();
     protected boolean isShowMultiSelectCheckBox = false;
 
-    private int mHighShowPosition;
-
     private boolean isForwardMode = false;
     private boolean isReplyDetailMode = false;
 
     private ChatPresenter presenter;
     private BaseFragment fragment;
+    private UserFaceUrlCache faceUrlCache;
 
     public void setPresenter(ChatPresenter chatPresenter) {
         this.presenter = chatPresenter;
@@ -68,7 +70,7 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
             return null;
         }
         ArrayList<TUIMessageBean> selectList = new ArrayList<>();
-        for (int i = 0; i < getItemCount() - 1; i++) {
+        for (int i = 0; i < dataSource.size(); i++) {
             if (isItemChecked(dataSource.get(i))) {
                 selectList.add(dataSource.get(i));
             }
@@ -116,10 +118,6 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
         this.mOnItemClickListener = listener;
     }
 
-    public void setHighShowPosition(int mHighShowPosition) {
-        this.mHighShowPosition = mHighShowPosition;
-    }
-
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -157,18 +155,11 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
             setCheckBoxStatus(msg, baseHolder);
             baseHolder.layoutViews(msg, position);
 
-            if (getItemViewType(position) == MSG_TYPE_HEADER_VIEW) {
-                if (isForwardMode) {
-                    ((MessageHeaderHolder) baseHolder).setLoadingStatus(false);
-                } else {
-                    ((MessageHeaderHolder) baseHolder).setLoadingStatus(mLoading);
-                }
-                return;
+        } else if (holder instanceof MessageHeadHolder) {
+            if (isForwardMode) {
+                ((MessageHeadHolder) holder).setLoadingStatus(false);
             } else {
-                if (position == mHighShowPosition && baseHolder.mContentLayout != null) {
-                    baseHolder.startHighLight();
-                    mHighShowPosition = -1;
-                }
+                ((MessageHeadHolder) holder).setLoadingStatus(mLoading);
             }
         }
     }
@@ -191,8 +182,8 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
                 baseHolder.mMutiSelectCheckBox.setEnabled(false);
             } else {
                 baseHolder.mMutiSelectCheckBox.setEnabled(true);
-                baseHolder.mMutiSelectCheckBox.setChecked(isItemChecked(messageBean));
             }
+            baseHolder.mMutiSelectCheckBox.setChecked(isItemChecked(messageBean));
             baseHolder.mMutiSelectCheckBox.setVisibility(View.VISIBLE);
             baseHolder.mMutiSelectCheckBox.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -288,106 +279,99 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
 
     @Override
     public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
-        if (holder instanceof MessageContentHolder) {
-            ((MessageContentHolder) holder).setMessageBubbleBackground(null);
-            ((MessageContentHolder) holder).stopHighLight();
-            ((MessageContentHolder) holder).onRecycled();
+        if (holder instanceof MessageBaseHolder) {
+            ((MessageBaseHolder<?>) holder).setMessageBubbleBackground(null);
+            ((MessageBaseHolder<?>) holder).onRecycled();
         }
     }
 
     @Override
+    @MainThread
     public void onViewNeedRefresh(final int type, TUIMessageBean messageBean) {
-        ThreadUtils.postOnUiThread(() -> {
-            mLoading = false;
-            refreshLoadView();
-            if (type == MessageRecyclerView.DATA_CHANGE_LOCATE_TO_POSITION) {
-                notifyDataSetChanged();
-                int position = getMessagePosition(messageBean);
-                if (position == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                mRecycleView.scrollToPosition(position);
-                mRecycleView.setHighShowPosition(position);
-            } else if (type == MessageRecyclerView.SCROLL_TO_POSITION) {
-                int position = getMessagePosition(messageBean);
-                if (position == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                mRecycleView.scrollToPosition(position);
-                mRecycleView.setHighShowPosition(position);
-                notifyItemChanged(position);
-                mRecycleView.scrollMessageFinish();
-            } else if (type == MessageRecyclerView.DATA_CHANGE_SCROLL_TO_POSITION) {
-                notifyDataSetChanged();
-                int position = getMessagePosition(messageBean);
-                if (position == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                mRecycleView.scrollToEnd();
-                mRecycleView.smoothScrollToPosition(position);
-                mRecycleView.setHighShowPosition(position);
-                notifyItemChanged(position);
-                mRecycleView.scrollMessageFinish();
-            } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_UPDATE) {
-                int position = getMessagePosition(messageBean);
-                if (position == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                notifyItemChanged(position);
-            } else if (type == IMessageRecyclerView.DATA_CHANGE_SCROLL_TO_POSITION_WITHOUT_HIGH_LIGHT) {
-                notifyDataSetChanged();
-                int position = getMessagePosition(messageBean);
-                if (position == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                mRecycleView.scrollToPosition(position);
-            } else if (type == DATA_CHANGE_SCROLL_TO_POSITION_AND_UPDATE) {
-                int position = getMessagePosition(messageBean);
-                if (position == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                notifyItemChanged(position);
-                mRecycleView.scrollToPosition(position);
+        mLoading = false;
+        refreshLoadView();
+        if (type == MessageRecyclerView.DATA_CHANGE_LOCATE_TO_POSITION) {
+            notifyDataSetChanged();
+            int position = getMessagePosition(messageBean);
+            if (position == ITEM_POSITION_UNKNOWN) {
+                return;
             }
-        });
+            mRecycleView.scrollToPosition(position);
+            HighlightPresenter.startHighlight(messageBean.getId());
+        } else if (type == MessageRecyclerView.SCROLL_TO_POSITION) {
+            int position = getMessagePosition(messageBean);
+            if (position == ITEM_POSITION_UNKNOWN) {
+                return;
+            }
+            mRecycleView.scrollToPosition(position);
+            HighlightPresenter.startHighlight(messageBean.getId());
+            mRecycleView.scrollMessageFinish();
+        } else if (type == MessageRecyclerView.DATA_CHANGE_SCROLL_TO_POSITION) {
+            notifyDataSetChanged();
+            int position = getMessagePosition(messageBean);
+            if (position == ITEM_POSITION_UNKNOWN) {
+                return;
+            }
+            mRecycleView.scrollToEnd();
+            mRecycleView.smoothScrollToPosition(position);
+            HighlightPresenter.startHighlight(messageBean.getId());
+            mRecycleView.scrollMessageFinish();
+        } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_UPDATE) {
+            int position = getMessagePosition(messageBean);
+            if (position == ITEM_POSITION_UNKNOWN) {
+                return;
+            }
+            notifyItemChanged(position);
+        } else if (type == IMessageRecyclerView.DATA_CHANGE_SCROLL_TO_POSITION_WITHOUT_HIGH_LIGHT) {
+            notifyDataSetChanged();
+            int position = getMessagePosition(messageBean);
+            if (position == ITEM_POSITION_UNKNOWN) {
+                return;
+            }
+            mRecycleView.scrollToPosition(position);
+        } else if (type == IMessageRecyclerView.DATA_CHANGE_SCROLL_TO_POSITION_AND_UPDATE) {
+            int position = getMessagePosition(messageBean);
+            if (position == ITEM_POSITION_UNKNOWN) {
+                return;
+            }
+            notifyItemChanged(position);
+            mRecycleView.scrollToPosition(position);
+        }
     }
 
     @Override
+    @MainThread
     public void onViewNeedRefresh(final int type, final int value) {
-        ThreadUtils.postOnUiThread(() -> {
-            mLoading = false;
-            if (type == MessageRecyclerView.DATA_CHANGE_TYPE_REFRESH) {
-                notifyDataSetChanged();
-                mRecycleView.scrollToEnd();
-            } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_ADD_BACK) {
-                notifyItemRangeInserted(dataSource.size() + 1, value);
-            } else if (type == MessageRecyclerView.DATA_CHANGE_NEW_MESSAGE) {
-                notifyItemRangeInserted(dataSource.size() + 1, value);
-                mRecycleView.onMsgAddBack();
-            } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_UPDATE) {
-                notifyDataSetChanged();
-            } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_ADD_FRONT) {
-                // 加载条目为数0，只更新动画
-                // The number of loaded entries is 0, only the animation is updated
-                if (value != 0) {
-                    // 加载过程中有可能之前第一条与新加载的最后一条的时间间隔不超过5分钟，时间条目需去掉，所以这里的刷新要多一个条目
-                    // During the loading process, it is possible that the time interval between the first item before
-                    // and the last item newly loaded is not more than 5 minutes, and the time entry needs to be removed,
-                    // so the refresh here needs one more entry
-                    notifyItemRangeInserted(0, value);
-                }
-            } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_LOAD) {
-                notifyDataSetChanged();
-                mRecycleView.scrollToEnd();
-                mRecycleView.loadMessageFinish();
-            } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_DELETE) {
-                if (value == ITEM_POSITION_UNKNOWN) {
-                    return;
-                }
-                notifyItemRemoved(getViewPositionByDataPosition(value));
+        mLoading = false;
+        if (type == MessageRecyclerView.DATA_CHANGE_TYPE_REFRESH) {
+            notifyDataSetChanged();
+            mRecycleView.scrollToEnd();
+        } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_ADD_BACK) {
+            notifyItemRangeInserted(dataSource.size() + 1, value);
+        } else if (type == MessageRecyclerView.DATA_CHANGE_NEW_MESSAGE) {
+            notifyItemRangeInserted(dataSource.size() + 1, value);
+            mRecycleView.onMsgAddBack();
+        } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_UPDATE) {
+            notifyDataSetChanged();
+        } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_ADD_FRONT) {
+            // The number of loaded entries is 0, only the animation is updated
+            if (value != 0) {
+                // During the loading process, it is possible that the time interval between the first item before
+                // and the last item newly loaded is not more than 5 minutes, and the time entry needs to be removed,
+                // so the refresh here needs one more entry
+                notifyItemRangeInserted(0, value);
             }
-            refreshLoadView();
-        });
+        } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_LOAD) {
+            notifyDataSetChanged();
+            mRecycleView.scrollToEnd();
+            mRecycleView.loadMessageFinish();
+        } else if (type == MessageRecyclerView.DATA_CHANGE_TYPE_DELETE) {
+            if (value == ITEM_POSITION_UNKNOWN) {
+                return;
+            }
+            notifyItemRemoved(getViewPositionByDataPosition(value));
+        }
+        refreshLoadView();
     }
 
     private void refreshLoadView() {
@@ -400,8 +384,32 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
     }
 
     @Override
+    public UserFaceUrlCache getUserFaceUrlCache() {
+        if (faceUrlCache == null) {
+            faceUrlCache = new UserFaceUrlCache() {
+                final Map<String, String> map = new HashMap();
+
+                {
+                    map.put(TUILogin.getLoginUser(), TUILogin.getFaceUrl());
+                }
+
+                @Override
+                public String getCachedFaceUrl(String userID) {
+                    return map.get(userID);
+                }
+
+                @Override
+                public void pushFaceUrl(String userID, String faceUrl) {
+                    map.put(userID, faceUrl);
+                }
+            };
+        }
+        return faceUrlCache;
+    }
+
+    @Override
     public int getItemCount() {
-        return dataSource.size() + 1;
+        return dataSource.size() + 2;
     }
 
     public int getViewPositionByDataPosition(int position) {
@@ -414,25 +422,21 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
     @Override
     public int getItemViewType(int position) {
         if (position == 0) {
-            return MSG_TYPE_HEADER_VIEW;
+            return MessageViewHolderFactory.VIEW_TYPE_HEAD;
+        } else if (position == getItemCount() - 1) {
+            return MessageViewHolderFactory.VIEW_TYPE_TAIL;
+        } else {
+            TUIMessageBean msg = getItem(position);
+            if (msg.getStatus() == TUIMessageBean.MSG_STATUS_REVOKE) {
+                return ClassicUIService.getInstance().getViewType(TipsMessageBean.class);
+            }
+            return ClassicUIService.getInstance().getViewType(msg.getClass());
         }
-        TUIMessageBean msg = getItem(position);
-        if (msg.getStatus() == TUIMessageBean.MSG_STATUS_REVOKE) {
-            return ClassicUIService.getInstance().getViewType(TipsMessageBean.class);
-        }
-        return ClassicUIService.getInstance().getViewType(msg.getClass());
     }
 
     @Override
     public void onDataSourceChanged(List<TUIMessageBean> dataSource) {
         this.dataSource = dataSource;
-    }
-
-    @Override
-    public void onScrollToEnd() {
-        if (mRecycleView != null) {
-            mRecycleView.scrollToEnd();
-        }
     }
 
     private int getMessagePosition(TUIMessageBean message) {
@@ -448,14 +452,31 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
         return position + 1;
     }
 
+    @Override
     public TUIMessageBean getItem(int position) {
-        if (position == 0 || dataSource == null || dataSource.size() == 0) {
+        if (position == 0 || dataSource == null || dataSource.isEmpty()) {
             return null;
         }
         if (position >= dataSource.size() + 1) {
             return null;
         }
         return dataSource.get(position - 1);
+    }
+
+    @Override
+    public TUIMessageBean getFirstMessageBean() {
+        if (dataSource == null || dataSource.isEmpty()) {
+            return null;
+        }
+        return dataSource.get(0);
+    }
+
+    @Override
+    public TUIMessageBean getLastMessageBean() {
+        if (dataSource == null || dataSource.isEmpty()) {
+            return null;
+        }
+        return dataSource.get(dataSource.size() - 1);
     }
 
     public List<TUIMessageBean> getItemList(int first, int last) {
@@ -471,10 +492,10 @@ public class MessageAdapter extends RecyclerView.Adapter implements IMessageAdap
         if (dataSource == null || dataSource.size() == 0 || first > last) {
             return new ArrayList<>(0);
         }
-        if (first >= dataSource.size() + 1 || last >= dataSource.size() + 1) {
+        if (first >= dataSource.size() + 1) {
             return new ArrayList<>(0);
         }
 
-        return new ArrayList<>(dataSource.subList(first - 1, last));
+        return new ArrayList<>(dataSource.subList(first - 1, last - 1));
     }
 }

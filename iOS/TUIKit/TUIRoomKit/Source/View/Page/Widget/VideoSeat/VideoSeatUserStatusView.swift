@@ -8,7 +8,7 @@
 import Foundation
 
 class VideoSeatUserStatusView: UIView {
-    private var isOwner: Bool = false
+    private var isShownHomeOwnerImageView: Bool = false
     private var isViewReady: Bool = false
     override func didMoveToWindow() {
         super.didMoveToWindow()
@@ -69,7 +69,7 @@ class VideoSeatUserStatusView: UIView {
         guard let _ = homeOwnerImageView.superview else { return }
         homeOwnerImageView.snp.remakeConstraints { make in
             make.leading.equalToSuperview()
-            make.width.height.equalTo(isOwner ? 24 : 0)
+            make.width.height.equalTo(isShownHomeOwnerImageView ? 24 : 0)
             make.top.bottom.equalToSuperview()
         }
     }
@@ -84,10 +84,15 @@ extension VideoSeatUserStatusView {
         } else {
             userNameLabel.text = item.userId
         }
-        isOwner = item.userId == EngineManager.createInstance().store.roomInfo.ownerId
-        homeOwnerImageView.isHidden = !isOwner
+        if item.userRole == .roomOwner {
+            homeOwnerImageView.image = UIImage(named: "room_homeowner", in: tuiRoomKitBundle(), compatibleWith: nil)
+        } else if item.userRole == .administrator {
+            homeOwnerImageView.image = UIImage(named: "room_administrator", in: tuiRoomKitBundle(), compatibleWith: nil)
+        }
+        isShownHomeOwnerImageView = item.userRole != .generalUser
+        homeOwnerImageView.isHidden = !isShownHomeOwnerImageView
         updateOwnerImageConstraints()
-        updateUserVolume(hasAudio: item.hasAudioStream, volume: item.audioVolume)
+        updateUserVolume(hasAudio: item.hasAudioStream, volume: item.userVoiceVolume)
     }
 
     func updateUserVolume(hasAudio: Bool, volume: Int) {

@@ -44,7 +44,7 @@ import com.tencent.qcloud.tuikit.tuichat.bean.message.MergeMessageBean;
 import com.tencent.qcloud.tuikit.tuichat.classicui.widget.ChatView;
 import com.tencent.qcloud.tuikit.tuichat.classicui.widget.input.InputView;
 import com.tencent.qcloud.tuikit.tuichat.classicui.widget.message.MessageRecyclerView;
-import com.tencent.qcloud.tuikit.tuichat.component.AudioPlayer;
+import com.tencent.qcloud.tuikit.tuichat.component.audio.AudioPlayer;
 import com.tencent.qcloud.tuikit.tuichat.presenter.ChatPresenter;
 import com.tencent.qcloud.tuikit.tuichat.util.ChatMessageBuilder;
 import com.tencent.qcloud.tuikit.tuichat.util.DataStoreUtil;
@@ -75,7 +75,7 @@ public class TUIBaseChatFragment extends BaseFragment {
         TUIChatLog.i(TAG, "oncreate view " + this);
 
         baseView = inflater.inflate(R.layout.chat_fragment, container, false);
-        //        // TODO 通过api设置ChatLayout各种属性的样例
+        
         //        // Example of setting various properties of ChatLayout through api
         //        ChatLayoutSetting helper = new ChatLayoutSetting(getActivity());
         //        helper.setGroupId(mChatInfo.getId());

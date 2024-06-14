@@ -3,7 +3,7 @@
 //  TUIKitDemo
 //
 //  Created by kennethmiao on 2018/10/10.
-//  Copyright © 2018年 Tencent. All rights reserved.
+//  Copyright © 2018 Tencent. All rights reserved.
 //
 
 #import "AppDelegate.h"
@@ -33,6 +33,7 @@
 #import "TUICallingHistoryViewController.h"
 #import "TIMDefine.h"
 #import "UIView+TUILayout.h"
+#import "OfflinePushExtInfo.h"
 
 //Minimalist
 #import "ConversationController_Minimalist.h"
@@ -43,12 +44,16 @@
 #import <TIMPush/TIMPush.h>
 #import <UserNotifications/UserNotifications.h>
 
-@interface AppDelegate () <V2TIMConversationListener, TUILoginListener, TUIThemeSelectControllerDelegate, TUILanguageSelectControllerDelegate,V2TIMAPNSListener, TIMPushDelegate>
+@interface AppDelegate () <V2TIMConversationListener, TUILoginListener, TUIThemeSelectControllerDelegate, TUILanguageSelectControllerDelegate,V2TIMAPNSListener, TIMPushDelegate, V2TIMSDKListener>
 
 @property (nonatomic, strong) TUIContactViewDataProvider *contactDataProvider;
 @property (nonatomic, strong) TUILoginConfig *loginConfig;
 @property (nonatomic, weak) TUITabBarItem *callsRecordItem;
 
+@property (nonatomic, strong) UITabBarController *preloadMainVC;
+@property (nonatomic, strong) NSString *userID;
+@property (nonatomic, strong) NSString *userSig;
+@property (nonatomic, assign) int lastLoginResultCode;
 @end
 
 @implementation AppDelegate
@@ -56,6 +61,7 @@
 #pragma mark - Life cycle
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     app = self;
+    self.lastLoginResultCode = 0;
 
     // Override point for customization after application launch.
     NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
@@ -65,6 +71,7 @@
     [self setupListener];
     [self setupGlobalUI];
     [self setupConfig];
+    [self tryPreloadMainVC];
     [self tryAutoLogin];
     
     return YES;
@@ -149,16 +156,50 @@
    return nav;
 }
 
-- (void)loginSDK:(NSString *)userID userSig:(NSString *)sig succ:(TSucc)succ fail:(TFail)fail {
-    
-    [TUILogin login:SDKAPPID userID:userID userSig:sig config:self.loginConfig succ:^{
+- (void)applyPrivateBasicInfo {
+    // Subclass override
+}
+
+- (void)tryPreloadMainVC {
+    [[TCLoginModel sharedInstance] loadIsDirectlyLogin];
+    [[TCLoginModel sharedInstance] loadLastLoginInfo];
+    self.userID = [TCLoginModel sharedInstance].userID;
+    self.userSig = [TCLoginModel sharedInstance].userSig;
+    if (!self.userID || !self.userSig) {
+        self.window.rootViewController = [self getLoginController];
+        [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
+        return;
+    }
+    [self applyPrivateBasicInfo];
+
+    self.preloadMainVC = [self getMainController];
+    [TUILogin initWithSdkAppID:SDKAPPID];
+    @weakify(self)
+    [[V2TIMManager sharedInstance] callExperimentalAPI:@"initLocalStorage" param:self.userID succ:^(NSObject *result) {
+        @strongify(self)
+        self.window.rootViewController = self.preloadMainVC;
         [self redpoint_setupTotalUnreadCount];
-        self.window.rootViewController = [self getMainController];
+    } fail:^(int code, NSString *desc) {
+        NSLog(@"%@", [NSString stringWithFormat:@"preloadMainController failed, code:%d desc:%@", code, desc]);
+    }];
+}
+
+- (void)loginSDK:(NSString *)userID userSig:(NSString *)sig succ:(TSucc)succ fail:(TFail)fail {
+    self.userID = userID;
+    self.userSig = sig;
+    [TUILogin login:SDKAPPID userID:self.userID userSig:self.userSig config:self.loginConfig succ:^{
+        if (self.preloadMainVC && [self.window.rootViewController isEqual:self.preloadMainVC]) {
+            // main vc has load
+        } else {
+            self.window.rootViewController = [self getMainController];
+        }
+        [self redpoint_setupTotalUnreadCount];
         [TUITool makeToast:NSLocalizedString(@"AppLoginSucc", nil) duration:1];
         if (succ) {
             succ();
         }
     } fail:^(int code, NSString *msg) {
+        self.lastLoginResultCode = code;
         self.window.rootViewController = [self getLoginController];
         [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
         if (fail) {
@@ -170,6 +211,7 @@
 #pragma mark - Private
 - (void)setupListener {
     [TUILogin addLoginListener:self];
+    [[V2TIMManager sharedInstance] addIMSDKListener:self];
     [[V2TIMManager sharedInstance] addConversationListener:self];
     [[V2TIMManager sharedInstance] setAPNSListener:self];
     
@@ -188,37 +230,7 @@ void uncaughtExceptionHandler(NSException*exception) {
 }
 
 - (void)tryAutoLogin {
-    [[TCLoginModel sharedInstance] getAccessAddressWithSucceedBlock:^(NSDictionary *data) {
-        [self autoLoginIfNeeded];
-    } failBlock:^(NSInteger errorCode, NSString *errorMsg) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [[TCLoginModel sharedInstance] getAccessAddressWithSucceedBlock:^(NSDictionary *data) {
-                [self autoLoginIfNeeded];
-            } failBlock:^(NSInteger errorCode, NSString *errorMsg) {
-                self.window.rootViewController = [self getLoginController];
-                [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
-            }];
-        });
-    }];
-}
-
-- (void)autoLoginIfNeeded {
-    @weakify(self)
-    [[TCLoginModel sharedInstance] autoLoginWithSucceedBlock:^(NSDictionary *data) {
-        @strongify(self)
-        NSString *userSig = data[@"sdkUserSig"];
-        NSString *userID = data[@"userId"];
-        if (userID.length != 0 && userSig.length != 0) {
-            [self loginSDK:userID userSig:userSig succ:nil fail:nil];
-        } else {
-            self.window.rootViewController = [self getLoginController];
-            [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
-        }
-    } failBlock:^(NSInteger errorCode, NSString *errorMsg) {
-        @strongify(self)
-        self.window.rootViewController = [self getLoginController];
-        [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
-    }];
+    [self loginSDK:[TCLoginModel sharedInstance].userID userSig:[TCLoginModel sharedInstance].userSig succ:nil fail:nil];
 }
 
 - (void)onLogoutSucc {
@@ -245,12 +257,20 @@ void uncaughtExceptionHandler(NSException*exception) {
 - (void)setupChatSecurityWarningView {
     NSString *tips = NSLocalizedString(@"ChatSecurityWarning", nil);
     NSString *buttonTitle = NSLocalizedString(@"ChatSecurityWarningReport", nil);
-    TUIWarningView *tipsView = [[TUIWarningView alloc] initWithFrame:CGRectMake(0, 0, Screen_Width, 0)
+    NSString *gotButtonTitle = NSLocalizedString(@"ChatSecurityWarningGot", nil);
+
+    __block TUIWarningView *tipsView = [[TUIWarningView alloc] initWithFrame:CGRectMake(0, 0, Screen_Width, 0)
                                                                 tips:tips
                                                          buttonTitle:buttonTitle
                                                         buttonAction:^{
         NSURL *url = [NSURL URLWithString:@"https://cloud.tencent.com/act/event/report-platform"];
         [TUITool openLinkWithURL:url];
+    }
+                                                      gotButtonTitle:gotButtonTitle gotButtonAction:^{
+        tipsView.frame = CGRectZero;;
+        [tipsView removeFromSuperview];
+        [[NSNotificationCenter defaultCenter] postNotificationName:TUICore_TUIChatExtension_ChatViewTopArea_ChangedNotification object:nil];
+    
     }];
     [TUIBaseChatViewController setCustomTopView:tipsView];
 }
@@ -271,24 +291,34 @@ void uncaughtExceptionHandler(NSException*exception) {
     }
     return _loginConfig;
 }
+
 #pragma mark - V2TIMConversationListener
 - (void)onTotalUnreadMessageCountChanged:(UInt64) totalUnreadCount {
     NSLog(@"%s, totalUnreadCount:%llu", __func__, totalUnreadCount);
 }
 
-#pragma mark - TUILoginListener
-- (void)onConnecting {
-    
-}
-
+#pragma mark V2TIMSDKListener
 - (void)onConnectSuccess {
-    
+    BOOL lastLoginIsNetworkError = (self.lastLoginResultCode >= 9501 && self.lastLoginResultCode <= 9525);
+    if (V2TIM_STATUS_LOGOUT == [[V2TIMManager sharedInstance] getLoginStatus]
+        && self.userID.length > 0 &&  self.userSig.length > 0  && lastLoginIsNetworkError) {
+        // The last time login failed due to network reasons, try to login again.
+        self.lastLoginResultCode = 0;
+        [TUILogin login:SDKAPPID userID:self.userID userSig:self.userSig config:self.loginConfig succ:^{
+            [self redpoint_setupTotalUnreadCount];
+            [TUITool makeToast:NSLocalizedString(@"AppLoginSucc", nil) duration:1];
+        } fail:^(int code, NSString * _Nullable msg) {
+            BOOL currentLoginIsNetworkError = (code >= 9501 && code <= 9525);
+            if (!currentLoginIsNetworkError) {
+                self.window.rootViewController = [self getLoginController];
+                [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
+            }
+            self.lastLoginResultCode = code;
+        }];
+    }
 }
 
-- (void)onConnectFailed:(int)code err:(NSString *)err {
-    
-}
-
+#pragma mark - TUILoginListener
 - (void)onUserSigExpired {
     [self onUserStatus:TUser_Status_SigExpired];
 }
@@ -345,14 +375,7 @@ void uncaughtExceptionHandler(NSException*exception) {
     } confirmAction:^(UIAlertAction *action, NSString *content) {
         NSString *userID = [TCLoginModel sharedInstance].userID;
         NSString *userSig = [TCLoginModel sharedInstance].userSig;
-        [self loginSDK:userID userSig:userSig succ:^{
-            NSLog(@"relogin sdk succeed");
-            self.window.rootViewController = [self getMainController];
-        } fail:^(int code, NSString *msg) {
-            NSLog(@"relogin sdk failed, code: %ld, msg: %@", (long)code, msg);
-            self.window.rootViewController = [self getLoginController];
-            [[NSNotificationCenter defaultCenter] postNotificationName: @"TUILoginShowPrivacyPopViewNotfication" object:nil];
-        }];
+        [self loginSDK:userID userSig:userSig succ:nil fail:nil];
     }];
 }
 
@@ -370,14 +393,12 @@ void uncaughtExceptionHandler(NSException*exception) {
 #pragma mark - TUILanguageSelectControllerDelegate
 - (void)onSelectLanguage:(TUILanguageSelectCellModel *)cellModel {
     /**
-     * 动态刷新语言的方法: 销毁当前界面，并重新创建后跳转来实现动态刷新语言
      * The method of dynamically refreshing the language: Destroy the current interface, and recreate it and then jump to realize dynamic refreshing of the language
      */
     [NSUserDefaults.standardUserDefaults setBool:YES forKey:@"need_recover_login_page_info"];
     [NSUserDefaults.standardUserDefaults synchronize];
     
     /**
-     * 1. 重新创建登录控制器以及根导航控制器
      * 1. Recreate the login controller as well as the root navigation controller
      */
     UIViewController *loginVc = [self getLoginController];
@@ -392,7 +413,6 @@ void uncaughtExceptionHandler(NSException*exception) {
     }
     
     /**
-     * 2. 创建语言选择页面，并 push
      * 2. Create a language selection page and push
      */
     TUILanguageSelectController *languageVc = [[TUILanguageSelectController alloc] init];
@@ -400,7 +420,6 @@ void uncaughtExceptionHandler(NSException*exception) {
     [navVc pushViewController:languageVc animated:NO];
     
     /**
-     * 3. 切换根控制器
      * 3. Switch root controller
      */
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -408,7 +427,6 @@ void uncaughtExceptionHandler(NSException*exception) {
     });
     
     /**
-     * 4. 重新配置安全警告视图
      * 4. Recofig the security warning view in ChatVC
      */
     [self setupChatSecurityWarningView];
@@ -417,14 +435,13 @@ void uncaughtExceptionHandler(NSException*exception) {
 #pragma mark - ThemeSelectControllerDelegate
 - (void)onSelectTheme:(TUIThemeSelectCollectionViewCellModel *)cellModel {
     /**
-     * 动态刷新主题的方法: 销毁当前界面，并重新创建后跳转来实现动态刷新主题
+     * : ，
      * The method of dynamically refreshing the theme: Destroy the current interface, and recreate it and then jump to realize the dynamic refresh theme
      */
     [NSUserDefaults.standardUserDefaults setBool:YES forKey:@"need_recover_login_page_info"];
     [NSUserDefaults.standardUserDefaults synchronize];
     
     /**
-     * 1. 重新创建登录控制器以及根导航控制器
      * 1. Recreate the login controller and root navigation controller
      */
     UIViewController *loginVc = [self getLoginController];
@@ -439,7 +456,6 @@ void uncaughtExceptionHandler(NSException*exception) {
     }
     
     /**
-     * 2. 创建主题选择控制器并 push
      * 2. Create a theme selection controller and push
      */
     TUIThemeSelectController *themeVc = [[TUIThemeSelectController alloc] init];
@@ -449,7 +465,6 @@ void uncaughtExceptionHandler(NSException*exception) {
     [navVc pushViewController:themeVc animated:NO];
     
     /**
-     * 3. 切换根控制器
      * 3. Switch root controller
      */
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -463,7 +478,6 @@ void uncaughtExceptionHandler(NSException*exception) {
                 UIApplication.sharedApplication.keyWindow.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
             } else {
                 /**
-                 * 忽略系统的设置，强制修改成白天模式，并应用当前的主题
                  * Ignoring system settings, forced switch to light mode, and apply the current theme
                  */
                 UIApplication.sharedApplication.keyWindow.overrideUserInterfaceStyle = UIUserInterfaceStyleLight;
@@ -612,6 +626,7 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     setItem.selectedImage = TUIDemoDynamicImage(@"tab_me_selected_img", [UIImage imageNamed:@"myself_selected"]);
     setItem.normalImage = TUIDemoDynamicImage(@"tab_me_normal_img", [UIImage imageNamed:@"myself_normal"]);
     SettingController *setVC = [[SettingController alloc] init];
+    setVC.lastLoginUser = self.userID;
     setVC.confirmLogout = ^{
         [TUILogin logout:^{
             [[TCLoginModel sharedInstance] clearLoginedInfo];
@@ -673,7 +688,6 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     [self reloadCombineData];
     
     /**
-     * 1. 重新创建登录控制器以及根导航控制器
      * 1. Recreate the login controller and root navigation controller
      */
     UIViewController *loginVc = [self getLoginController];
@@ -692,7 +706,6 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     [navVc pushViewController:styleSelectVC animated:NO];
 
     /**
-     * 3. 切换根控制器
      * 3. Switch root controller
      */
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -703,7 +716,6 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
             [NSUserDefaults.standardUserDefaults synchronize];
         }
         /**
-         * 4. 重新配置安全警告视图
          * 4. Recofig the security warning view in ChatVC
          */
         [self setupChatSecurityWarningView];
@@ -739,6 +751,7 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     TUINavigationController *msgNav = [[TUINavigationController alloc] initWithRootViewController:convVC];
     msgItem.controller = msgNav;
     msgNav.navigationItemBackArrowImage = backimg;
+    msgNav.navigationBackColor = [UIColor whiteColor];
     msgItem.controller.view.backgroundColor = [UIColor d_colorWithColorLight:[UIColor whiteColor] dark:TController_Background_Color_Dark];
     msgItem.badgeView = [[TUIBadgeView alloc] init];
     msgItem.badgeView.clearCallback = ^{
@@ -760,6 +773,7 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     contactItem.normalImage = TUIDynamicImage(@"", TUIThemeModuleDemo_Minimalist, [UIImage imageNamed:TUIDemoImagePath_Minimalist(@"contact_normal")]);
     TUINavigationController *contactNav = [[TUINavigationController alloc] initWithRootViewController:[[ContactsController_Minimalist alloc] init]];
     contactNav.navigationItemBackArrowImage = backimg;
+    contactNav.navigationBackColor = [UIColor whiteColor];
     contactItem.controller = contactNav;
     contactItem.controller.view.backgroundColor = [UIColor d_colorWithColorLight:[UIColor whiteColor] dark:TController_Background_Color_Dark];
     contactItem.badgeView = [[TUIBadgeView alloc] init];
@@ -772,6 +786,7 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     setItem.selectedImage = TUIDynamicImage(@"", TUIThemeModuleDemo_Minimalist, [UIImage imageNamed:TUIDemoImagePath_Minimalist(@"setting_selected")]);
     setItem.normalImage = TUIDynamicImage(@"", TUIThemeModuleDemo_Minimalist, [UIImage imageNamed:TUIDemoImagePath_Minimalist(@"setting_normal")]);
     SettingController_Minimalist *setVC = [[SettingController_Minimalist alloc] init];
+    setVC.lastLoginUser = self.userID;
     setVC.confirmLogout = ^{
         [TUILogin logout:^{
             [[TCLoginModel sharedInstance] clearLoginedInfo];
@@ -785,6 +800,7 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     
     TUINavigationController *setNav = [[TUINavigationController alloc] initWithRootViewController:setVC];
     setNav.navigationItemBackArrowImage = backimg;
+    setNav.navigationBackColor = [UIColor whiteColor];
     setItem.controller = setNav;
     setItem.controller.view.backgroundColor = [UIColor d_colorWithColorLight:[UIColor whiteColor] dark:TController_Background_Color_Dark];
     [items addObject:setItem];
@@ -809,15 +825,23 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
         callsItem.identity = @"callsItem";
         callsItem.selectedImage = selected;
         callsItem.normalImage = normal;
-        callsItem.controller = [[TUINavigationController alloc] initWithRootViewController:callsVc];
+        TUINavigationController *callNav = [[TUINavigationController alloc] initWithRootViewController:callsVc];
+        callNav.navigationBackColor = [UIColor whiteColor];
+        callsItem.controller = callNav;
+        
         return callsItem;
     }
     return nil;
 }
 
 #pragma mark - TIMPush
-// TIMPush 相关配置
+// TIMPush 
 - (int)offlinePushCertificateID {
+    
+    NSInteger kAPNSBusiIdByType =  [NSUserDefaults.standardUserDefaults integerForKey:@"kAPNSBusiIdByType"];
+    if (kAPNSBusiIdByType > 0) {
+        return (int)kAPNSBusiIdByType;
+    }
     return kAPNSBusiId;
 }
 
@@ -825,10 +849,28 @@ typedef void (^confirmHandler)(UIAlertAction *action, NSString *content);
     return kTIMPushAppGorupKey;
 }
 
+
+// If you need to customize the parsing of received remote push, you need to implement 'onRemoteNotificationReceived' in the AppDelegate.m file and return YES
+/**
+ - (BOOL)onRemoteNotificationReceived:(NSString *)notice {
+     NSString *ext = notice;
+     OfflinePushExtInfo *info = [OfflinePushExtInfo createWithExtString:ext];
+     dispatch_async(dispatch_get_main_queue(), ^{
+         // custom operation such as navigate chatVC;
+         NSInteger chatType = info.entity.chatType;
+         NSString *sender = info.entity.sender;
+         NSString *userID = (chatType == 1) ? sender : nil;
+         NSString *groupID = (chatType != 1) ? sender : nil;
+         [self navigateToBuiltInChatViewController:userID groupID:groupID];
+     });
+     return YES ;
+ }
+ */
+
 - (void)navigateToBuiltInChatViewController:(NSString *)userID groupID:(NSString *)groupID {
     UITabBarController *tab = [self getMainController];
     if (![tab isKindOfClass: UITabBarController.class]) {
-        // 正在登录中
+        //Logging in
         return;
     }
     if (tab.selectedIndex != 0) {

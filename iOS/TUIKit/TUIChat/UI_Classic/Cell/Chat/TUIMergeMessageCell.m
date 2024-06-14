@@ -9,6 +9,7 @@
 #import "TUIMergeMessageCell.h"
 #import <TIMCommon/TIMDefine.h>
 #import <TUICore/TUIThemeManager.h>
+#import <TUICore/TUICore.h>
 
 #ifndef CGFLOAT_CEIL
 #ifdef CGFLOAT_IS_DOUBLE
@@ -179,7 +180,6 @@
     [self.container.layer insertSublayer:self.borderLayer atIndex:0];
     [self.container.layer setMask:self.maskLayer];
 
-    [self prepareReactTagUI:self.container];
 }
 
 + (BOOL)requiresConstraintBasedLayout {
@@ -220,7 +220,7 @@
     
     UIView *lastView =  self.contentRowView1;
     int count = self.relayData.abstractSendDetailList.count;
-    if (count == 3) {
+    if (count >= 3) {
         lastView = self.contentRowView3;
     }
     else if (count == 2){
@@ -278,8 +278,7 @@
             self.contentRowView2.hidden = NO;
             self.contentRowView3.hidden = YES;
             break;
-        case 3:
-            
+        default:
             [self.contentRowView1 fillWithData:self.relayData.abstractSendDetailList[0][@"sender"] detailContent:self.relayData.abstractSendDetailList[0][@"detail"]];
             [self.contentRowView2 fillWithData:self.relayData.abstractSendDetailList[1][@"sender"] detailContent:self.relayData.abstractSendDetailList[1][@"detail"]];
             [self.contentRowView3 fillWithData:self.relayData.abstractSendDetailList[2][@"sender"] detailContent:self.relayData.abstractSendDetailList[2][@"detail"]];
@@ -287,9 +286,10 @@
             self.contentRowView2.hidden = NO;
             self.contentRowView3.hidden = NO;
             break;
-        default:
-            break;
     }
+    
+    [self prepareReactTagUI:self.container];
+
     // tell constraints they need updating
     [self setNeedsUpdateConstraints];
 
@@ -326,6 +326,11 @@
 
 - (void)onThemeChanged {
     [self applyBorderTheme];
+}
+
+- (void)prepareReactTagUI:(UIView *)containerView {
+    NSDictionary *param = @{TUICore_TUIChatExtension_ChatMessageReactPreview_Delegate: self};
+    [TUICore raiseExtension:TUICore_TUIChatExtension_ChatMessageReactPreview_ClassicExtensionID parentView:containerView param:param];
 }
 
 #pragma mark - TUIMessageCellProtocol

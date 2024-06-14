@@ -2,7 +2,6 @@ package com.tencent.cloud.tuikit.roomkit.videoseat.ui.view;
 
 import android.content.Context;
 import android.graphics.Rect;
-import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -19,11 +18,9 @@ import androidx.constraintlayout.utils.widget.ImageFilterView;
 import com.tencent.cloud.tuikit.engine.common.TUIVideoView;
 import com.tencent.cloud.tuikit.engine.room.TUIRoomDefine;
 import com.tencent.cloud.tuikit.roomkit.R;
-import com.tencent.cloud.tuikit.roomkit.videoseat.ui.utils.ImageLoader;
+import com.tencent.cloud.tuikit.roomkit.common.utils.ImageLoader;
 import com.tencent.cloud.tuikit.roomkit.videoseat.viewmodel.UserEntity;
 import com.tencent.qcloud.tuicore.util.ScreenUtil;
-
-import de.hdodenhof.circleimageview.CircleImageView;
 
 public class UserDisplayView extends FrameLayout {
     public static final int MARGIN_PX = ScreenUtil.dip2px(5);
@@ -34,7 +31,7 @@ public class UserDisplayView extends FrameLayout {
     private View                 mTalkView;
     private View                 mViewBackground;
     private TextView             mUserNameTv;
-    private ImageView            mIvMaster;
+    private ImageView            mIvRoomManage;
     private UserVolumePromptView mUserMic;
     private ImageFilterView      mUserHeadImg;
     private UserEntity           mMemberEntity;
@@ -83,7 +80,7 @@ public class UserDisplayView extends FrameLayout {
         mUserNameTv.setText(model.getUserName());
         enableVolumeEffect(model.isAudioAvailable());
         updateVolumeEffect(model.getAudioVolume());
-        mIvMaster.setVisibility(model.getRole() == TUIRoomDefine.Role.ROOM_OWNER ? VISIBLE : GONE);
+        updateRoomManageFlag(model);
 
         mTopLayout.setRadius(mRoundRadius);
         int backGroundId = R.drawable.tuivideoseat_talk_bg_round;
@@ -92,6 +89,15 @@ public class UserDisplayView extends FrameLayout {
 
         mMemberEntity = model;
         updateVideoEnableEffect();
+    }
+
+    private void updateRoomManageFlag(UserEntity user) {
+        mIvRoomManage.setVisibility(user.getRole() != TUIRoomDefine.Role.GENERAL_USER ? VISIBLE : GONE);
+        if (user.getRole() == TUIRoomDefine.Role.ROOM_OWNER) {
+            mIvRoomManage.setBackgroundResource(R.drawable.tuiroomkit_icon_video_room_owner);
+        } else if (user.getRole() == TUIRoomDefine.Role.MANAGER) {
+            mIvRoomManage.setBackgroundResource(R.drawable.tuiroomkit_icon_video_room_manager);
+        }
     }
 
     private void updateUserAvatarIfNeeded(UserEntity oldUser, UserEntity newUser) {
@@ -114,21 +120,16 @@ public class UserDisplayView extends FrameLayout {
         if (videoView == null) {
             return;
         }
-        // addView 需要在 ViewGroup 测量、布局之后才能执行；
-        post(new Runnable() {
-            @Override
-            public void run() {
-                ViewParent viewParent = videoView.getParent();
-                if (viewParent != null && (viewParent instanceof ViewGroup)) {
-                    if (viewParent == mVideoContainer) {
-                        return;
-                    }
-                    ((ViewGroup) viewParent).removeView(videoView);
-                }
-                mVideoContainer.removeAllViews();
-                mVideoContainer.addView(videoView);
+
+        ViewParent viewParent = videoView.getParent();
+        if (viewParent != null && (viewParent instanceof ViewGroup)) {
+            if (viewParent == mVideoContainer) {
+                return;
             }
-        });
+            ((ViewGroup) viewParent).removeView(videoView);
+        }
+        mVideoContainer.removeAllViews();
+        mVideoContainer.addView(videoView);
     }
 
     public void clearUserEntity() {
@@ -170,7 +171,7 @@ public class UserDisplayView extends FrameLayout {
         mVideoContainer = parent.findViewById(R.id.fl_container);
         mUserHeadImg = parent.findViewById(R.id.img_user_head);
         mUserMic = parent.findViewById(R.id.tuivideoseat_user_mic);
-        mIvMaster = parent.findViewById(R.id.img_master);
+        mIvRoomManage = parent.findViewById(R.id.tuiroomkit_iv_room_manage);
         mTalkView = parent.findViewById(R.id.talk_view);
         mViewBackground = parent.findViewById(R.id.view_background);
     }

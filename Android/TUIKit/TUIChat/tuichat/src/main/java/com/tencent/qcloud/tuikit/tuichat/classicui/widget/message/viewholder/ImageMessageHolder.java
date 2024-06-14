@@ -185,8 +185,7 @@ public class ImageMessageHolder extends MessageContentHolder {
                 return true;
             }
         });
-
-        if (msg.getMessageReactBean() == null || msg.getMessageReactBean().getReactSize() <= 0) {
+        if (!msg.isHasReaction()) {
             setMessageBubbleBackground(null);
             setMessageBubbleZeroPadding();
         }
