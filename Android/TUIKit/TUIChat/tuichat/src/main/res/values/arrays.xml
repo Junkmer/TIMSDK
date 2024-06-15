@@ -196,4 +196,24 @@
         <item>@string/TUIEmojiLike</item>
     </string-array>
 
+    <array name="systemt_build_emoji_file_name">
+        <item>3297.png</item>
+        <item>3298.png</item>
+        <item>3299.png</item>
+    </array>
+
+    <string-array name="system_build_emoji_key">
+        <item>3297</item> <!-- 实际对应的unicode编码为: \u3297,但因为xml文件会默认转换成文本而并非是 unicode编码,因此需要去掉 \u-->
+        <item>3298</item>
+        <item>3299</item>
+        <item>㊗</item>
+        <item>👍</item>
+        <item>㊙</item>
+    </string-array>
+
+    <string-array name="system_build_emoji_name">
+        <item>@string/SystemEmojiZhu</item>
+        <item>@string/SystemEmojiMi</item>
+    </string-array>
+
 </resources>

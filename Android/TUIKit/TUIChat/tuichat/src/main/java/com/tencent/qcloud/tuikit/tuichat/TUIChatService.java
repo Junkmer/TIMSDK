@@ -63,6 +63,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @AutoService(TUIInitializer.class)
 @TUIInitializerDependency("TIMCommon")
@@ -341,6 +342,7 @@ public class TUIChatService implements TUIInitializer, ITUIService, ITUINotifica
     private void handleInitStatusEvent(String subKey) {
         if (TextUtils.equals(subKey, TUIConstants.TUILogin.EVENT_SUB_KEY_START_INIT)) {
             loadBuildInFaces();
+            loadSystemFaces();
         }
     }
 
@@ -365,6 +367,27 @@ public class TUIChatService implements TUIInitializer, ITUIService, ITUINotifica
             emojiFaceGroup.setPageRowCount(FaceManager.EMOJI_ROW_COUNT);
             emojiFaceGroup.setFaceGroupIconUrl(com.tencent.qcloud.tuikit.tuichat.R.drawable.tuiemoji_default_emoji_group_icon);
             FaceManager.addFaceGroup(FaceManager.EMOJI_GROUP_ID, emojiFaceGroup);
+        });
+    }
+
+    private void loadSystemFaces(){
+        ThreadUtils.execute(() -> {
+            Map<String,Emoji> emojiList = new ConcurrentHashMap<>();
+            // load chat default emojis
+            String[] emojiKeys = getAppContext().getResources().getStringArray(R.array.system_build_emoji_key);
+            String[] emojiNames = getAppContext().getResources().getStringArray(R.array.system_build_emoji_name);
+            String[] emojiPath = getAppContext().getResources().getStringArray(R.array.systemt_build_emoji_file_name);
+            int emojiSize = getAppContext().getResources().getDimensionPixelSize(com.tencent.qcloud.tuikit.tuichat.R.dimen.chat_default_load_emoji_size);
+            for (int i = 0; i < emojiKeys.length; i++) {
+                String emojiKey = emojiKeys[i];
+                String emojiFilePath = "systembuildemojis/" + emojiPath[i%emojiPath.length];
+                Emoji emoji = FaceManager.loadAssetEmoji(emojiKey, emojiFilePath, emojiSize);
+                if (emoji != null) {
+                    emoji.setFaceName(emojiNames[i%emojiNames.length]);
+                    emojiList.put(emojiKey,emoji);
+                }
+            }
+            FaceManager.addSystemFace(emojiList);
         });
     }
 

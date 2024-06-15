@@ -53,5 +53,6 @@
     <dimen name="chat_message_content_max_width">235dp</dimen>
 
     <dimen name="common_default_emoji_size">28dp</dimen>
+    <dimen name="system_default_emoji_size">18dp</dimen>
 
 </resources>

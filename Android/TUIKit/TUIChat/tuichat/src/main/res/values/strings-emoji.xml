@@ -62,4 +62,7 @@
     <string name="TUIEmoji857">[857]</string>
     <string name="TUIEmojiKnife">[Knife]</string>
     <string name="TUIEmojiLike">[Like]</string>
+
+    <string name="SystemEmojiZhu">[祝]</string>
+    <string name="SystemEmojiMi">[秘]</string>
 </resources>
